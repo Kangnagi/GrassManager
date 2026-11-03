@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Grass Manager</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect x='1' y='1' width='6' height='6' rx='1.5' fill='%2340c463'/><rect x='9' y='1' width='6' height='6' rx='1.5' fill='%23216e39'/><rect x='1' y='9' width='6' height='6' rx='1.5' fill='%2330a14e'/><rect x='9' y='9' width='6' height='6' rx='1.5' fill='%239be9a8'/></svg>" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+      <span>Grass Manager</span>
+    </div>
+    <nav class="tabs" role="tablist">
+      <button data-tab="dashboard" class="active">대시보드</button>
+      <button data-tab="projects">프로젝트</button>
+      <button data-tab="planner">주간 계획</button>
+      <button data-tab="settings">설정</button>
+    </nav>
+    <button id="syncBtn" class="btn ghost" title="GitHub 동기화">⟳ 동기화</button>
+  </header>
+
+  <div id="banner" class="banner hidden"></div>
+  <main id="view"></main>
+  <div id="modal" class="modal hidden" role="dialog" aria-modal="true"><div class="modal-box"></div></div>
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
