@@ -60,17 +60,21 @@ async function gh(path) {
   return r.json();
 }
 
-// 토큰이 있으면 GraphQL로 1년치 잔디(공식 contribution calendar)를 가져온다
-async function fetchCalendar(login) {
-  const query = `query($login:String!){user(login:$login){contributionsCollection{contributionCalendar{totalContributions weeks{contributionDays{date contributionCount}}}}}}`;
+async function graphql(query, variables) {
   const r = await fetch('https://api.github.com/graphql', {
     method: 'POST', headers: { ...ghHeaders(), 'Content-Type': 'application/json' },
-    body: JSON.stringify({ query, variables: { login } }),
+    body: JSON.stringify({ query, variables }),
   });
   const j = await r.json();
   if (!r.ok || j.errors) throw new Error(j.errors?.[0]?.message || j.message || `GraphQL ${r.status}`);
+  return j.data;
+}
+
+// 토큰이 있으면 GraphQL로 1년치 잔디(공식 contribution calendar)를 가져온다
+async function fetchCalendar(login) {
+  const data = await graphql(`query($login:String!){user(login:$login){contributionsCollection{contributionCalendar{totalContributions weeks{contributionDays{date contributionCount}}}}}}`, { login });
   const days = {};
-  for (const w of j.data.user.contributionsCollection.contributionCalendar.weeks)
+  for (const w of data.user.contributionsCollection.contributionCalendar.weeks)
     for (const d of w.contributionDays) days[d.date] = d.contributionCount;
   return days;
 }
@@ -78,6 +82,7 @@ async function fetchCalendar(login) {
 // 공개 이벤트(최근 ~90일)로 로컬 시간대 기준 활동을 계산 — 토큰 없을 때의 대체 + "오늘" 판정 보정용
 async function fetchEventDays(login) {
   const days = {};
+  const repoDays = {}; // 날짜 → 활동한 저장소 목록 (토큰 없을 때 잔디 칸 상세보기에 사용)
   for (let page = 1; page <= 3; page++) {
     const evs = await gh(`/users/${encodeURIComponent(login)}/events${state.settings.token ? '' : '/public'}?per_page=100&page=${page}`);
     for (const e of evs) {
@@ -86,11 +91,19 @@ async function fetchEventDays(login) {
       else if (e.type === 'PullRequestEvent' && e.payload?.action === 'opened') n = 1;
       else if (e.type === 'IssuesEvent' && e.payload?.action === 'opened') n = 1;
       else if (e.type === 'CreateEvent' && e.payload?.ref_type === 'repository') n = 1;
-      if (n) { const k = ymd(new Date(e.created_at)); days[k] = (days[k] || 0) + n; }
+      if (n) {
+        const k = ymd(new Date(e.created_at));
+        days[k] = (days[k] || 0) + n;
+        const list = (repoDays[k] ||= []);
+        let item = list.find((x) => x.name === e.repo.name);
+        if (!item) list.push((item = { name: e.repo.name, refs: [] }));
+        const ref = e.type === 'PushEvent' && e.payload?.ref?.replace(/^refs\/heads\//, '');
+        if (ref && !item.refs.includes(ref)) item.refs.push(ref);
+      }
     }
     if (evs.length < 100) break;
   }
-  return days;
+  return { days, repoDays };
 }
 
 async function fetchRepos() {
@@ -99,6 +112,68 @@ async function fetchRepos() {
     ? '/user/repos?affiliation=owner&sort=pushed&per_page=100'
     : `/users/${encodeURIComponent(username)}/repos?sort=pushed&per_page=100`;
   return gh(path);
+}
+
+// 잔디 칸 상세: 그날 어떤 저장소에 어떤 커밋/PR/이슈를 했는지
+const dayCache = {};
+async function fetchDayDetail(date) {
+  const { username, token } = state.settings;
+  const from = new Date(`${date}T00:00:00`);
+  const to = addDays(from, 1);
+  const repos = {};
+  const get = (name, extra = {}) => (repos[name] ||= { name, url: `https://github.com/${name}`, private: false, commits: 0, prs: 0, issues: 0, reviews: 0, created: false, messages: null, ...extra });
+  let restricted = 0;
+  let candidates = [];
+
+  if (token) {
+    // exact: 로컬 하루 범위 / wide: 커밋 기여는 날짜 단위로 집계되므로 ±1일로 넓혀 후보 저장소를 찾는다
+    const byRepo = (f) => `${f}(maxRepositories:25){repository{nameWithOwner url isPrivate} contributions{totalCount}}`;
+    const data = await graphql(`query($login:String!,$from:DateTime!,$to:DateTime!,$wf:DateTime!,$wt:DateTime!){user(login:$login){
+      exact: contributionsCollection(from:$from,to:$to){ restrictedContributionsCount
+        ${byRepo('commitContributionsByRepository')} ${byRepo('pullRequestContributionsByRepository')}
+        ${byRepo('issueContributionsByRepository')} ${byRepo('pullRequestReviewContributionsByRepository')}
+        repositoryContributions(first:25){nodes{repository{nameWithOwner url isPrivate}}} }
+      wide: contributionsCollection(from:$wf,to:$wt){ ${byRepo('commitContributionsByRepository')} } }}`,
+    { login: username, from: from.toISOString(), to: to.toISOString(), wf: addDays(from, -1).toISOString(), wt: addDays(to, 1).toISOString() });
+    const ex = data.user.exact;
+    restricted = ex.restrictedContributionsCount;
+    const meta = (r) => ({ url: r.url, private: r.isPrivate });
+    for (const [field, key] of [['pullRequestContributionsByRepository', 'prs'], ['issueContributionsByRepository', 'issues'], ['pullRequestReviewContributionsByRepository', 'reviews']])
+      for (const x of ex[field]) get(x.repository.nameWithOwner, meta(x.repository))[key] = x.contributions.totalCount;
+    for (const x of ex.repositoryContributions.nodes) get(x.repository.nameWithOwner, meta(x.repository)).created = true;
+    const exactCommits = Object.fromEntries(ex.commitContributionsByRepository.map((x) => [x.repository.nameWithOwner, x.contributions.totalCount]));
+    candidates = data.user.wide.commitContributionsByRepository.map((x) => ({ name: x.repository.nameWithOwner, meta: meta(x.repository), fallback: exactCommits[x.repository.nameWithOwner] || 0 }));
+  } else {
+    // 이벤트에는 push한 브랜치가 남아 있으므로 그 브랜치에서 커밋을 찾는다
+    candidates = (state.contrib.repoDays?.[date] || []).filter((x) => typeof x === 'object')
+      .map((x) => ({ name: x.name, refs: x.refs, meta: {}, fallback: 0 }));
+  }
+
+  // 저장소별 실제 커밋 목록 (로컬 하루 범위). 브랜치를 모르면 기본 브랜치 — GitHub 잔디 집계 기준과 같다
+  const range = `author=${encodeURIComponent(username)}&since=${from.toISOString()}&until=${to.toISOString()}&per_page=50`;
+  await Promise.all(candidates.map(async (c) => {
+    try {
+      const repo = await gh(`/repos/${c.name}`);
+      const branches = [repo.default_branch, ...(c.refs || []).filter((b) => b !== repo.default_branch)];
+      const seen = new Map();
+      for (const b of branches) {
+        const cs = await gh(`/repos/${c.name}/commits?sha=${encodeURIComponent(b)}&${range}`);
+        for (const x of cs) if (!seen.has(x.sha)) seen.set(x.sha, { x, branch: b });
+      }
+      if (!seen.size) return;
+      const r = get(c.name, { url: repo.html_url, private: repo.private });
+      r.commits = seen.size;
+      r.messages = [...seen.values()].map(({ x, branch }) => ({
+        sha: x.sha.slice(0, 7), msg: x.commit.message.split('\n')[0], url: x.html_url, at: new Date(x.commit.author.date),
+        branch: branch === repo.default_branch ? null : branch,
+      })).sort((a, b) => a.at - b.at);
+    } catch {
+      if (c.fallback) { const r = get(c.name, c.meta); r.commits = c.fallback; r.noAccess = true; }
+    }
+  }));
+  const list = Object.values(repos).filter((r) => r.commits || r.prs || r.issues || r.reviews || r.created)
+    .sort((a, b) => (b.commits + b.prs + b.issues + b.reviews) - (a.commits + a.prs + a.issues + a.reviews));
+  return { list, restricted };
 }
 
 let syncing = false;
@@ -110,12 +185,13 @@ async function sync({ quiet = false } = {}) {
   try {
     const [cal, ev] = await Promise.all([
       token ? fetchCalendar(username) : Promise.resolve(null),
-      fetchEventDays(username).catch(() => ({})),
+      fetchEventDays(username).catch(() => ({ days: {}, repoDays: {} })),
     ]);
     const days = { ...(cal || {}) };
     // 캘린더는 UTC 기준일 수 있으므로 최근 날짜는 로컬 시간 기준 이벤트 수와 비교해 큰 값 사용
-    for (const [k, v] of Object.entries(ev)) days[k] = Math.max(days[k] || 0, v);
-    state.contrib = { fetchedAt: new Date().toISOString(), days, source: cal ? 'graphql' : 'events' };
+    for (const [k, v] of Object.entries(ev.days)) days[k] = Math.max(days[k] || 0, v);
+    state.contrib = { fetchedAt: new Date().toISOString(), days, repoDays: ev.repoDays, source: cal ? 'graphql' : 'events' };
+    for (const k of Object.keys(dayCache)) delete dayCache[k];
 
     // 연동된 프로젝트의 마지막 push 시각 갱신
     if (state.projects.some((p) => p.repo)) {
@@ -209,7 +285,11 @@ function checkReminder() {
 function render() {
   $$('.tabs button').forEach((b) => b.classList.toggle('active', b.dataset.tab === state.tab));
   const v = $('#view');
+  const prevScroll = $('.grass-wrap')?.scrollLeft;
   v.innerHTML = { dashboard: viewDashboard, projects: viewProjects, planner: viewPlanner, settings: viewSettings }[state.tab]();
+  // 좁은 화면에서는 최근 주가 보이도록 오른쪽 끝에서 시작 (다시 그릴 때는 위치 유지)
+  const wrap = $('.grass-wrap');
+  if (wrap) wrap.scrollLeft = prevScroll ?? wrap.scrollWidth;
   checkReminder();
 }
 
@@ -261,6 +341,7 @@ function viewDashboard() {
   <section class="card">
     <h2>잔디 <span class="sub">${state.contrib.source === 'events' ? '토큰 없이 최근 90일 공개 활동만 표시 중 — 설정에서 토큰을 넣으면 1년치 공식 잔디' : `@${esc(state.settings.username)}`}</span></h2>
     ${grassHtml()}
+    ${dayDetailHtml()}
   </section>
 
   <div class="grid2">
@@ -284,12 +365,60 @@ function grassHtml() {
       const k = ymd(day);
       const c = count(k);
       const lv = c === 0 ? 0 : c < 3 ? 1 : c < 6 ? 2 : c < 10 ? 3 : 4;
-      const cls = ['d', lv && `l${lv}`, k === todayStr() && 'today', day > today && 'future'].filter(Boolean).join(' ');
-      cells.push(`<span class="${cls}" style="grid-column:${w + 1};grid-row:${d + 2}" title="${k} · ${c}개"></span>`);
+      const future = day > today;
+      const cls = ['d', lv && `l${lv}`, k === todayStr() && 'today', future && 'future', k === selectedDay && 'sel'].filter(Boolean).join(' ');
+      cells.push(`<span class="${cls}" style="grid-column:${w + 1};grid-row:${d + 2}" title="${k} · ${c}개"${future ? '' : ` data-act="day" data-date="${k}"`}></span>`);
     }
   }
   return `<div class="grass-wrap"><div class="grass">${cells.join('')}</div></div>
     <div class="legend">적음 <i style="background:var(--g0)"></i><i style="background:var(--g1)"></i><i style="background:var(--g2)"></i><i style="background:var(--g3)"></i><i style="background:var(--g4)"></i> 많음</div>`;
+}
+
+let selectedDay = null;
+function dayDetailHtml() {
+  if (!selectedDay) return '<p class="muted small" style="margin:8px 0 0">칸을 누르면 그날 어떤 저장소에 커밋했는지 볼 수 있어요.</p>';
+  const d = new Date(`${selectedDay}T00:00:00`);
+  const title = `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 (${DAY_NAMES[d.getDay()]})`;
+  const res = dayCache[selectedDay];
+  let body;
+  if (!res) body = '<p class="muted">불러오는 중…</p>';
+  else if (res.error) body = `<p class="muted">불러오지 못했어요 — ${esc(res.error)}</p>`;
+  else {
+    const projOf = (name) => state.projects.find((p) => p.repo && p.repo.toLowerCase() === name.toLowerCase());
+    body = res.list.map((r) => {
+      const p = projOf(r.name);
+      const parts = [r.commits && `커밋 ${r.commits}`, r.prs && `PR ${r.prs}`, r.issues && `이슈 ${r.issues}`, r.reviews && `리뷰 ${r.reviews}`, r.created && '저장소 생성'].filter(Boolean);
+      return `<div class="repo-day">
+        <div class="row">
+          ${p ? `<span class="sw" style="background:${p.color}" title="${esc(p.name)}"></span>` : ''}
+          <a href="${esc(r.url)}" target="_blank" rel="noopener"><b>${esc(r.name)}</b></a>${r.private ? ' <span class="size">private</span>' : ''}
+          <span class="grow"></span><span class="muted small">${parts.join(' · ')}</span>
+        </div>
+        ${r.messages ? `<ul class="commits">${r.messages.map((m) => `<li><span class="muted small">${String(m.at.getHours()).padStart(2, '0')}:${String(m.at.getMinutes()).padStart(2, '0')}</span>
+          <span class="grow">${esc(m.msg)}${m.branch ? ` <span class="size" title="기본 브랜치가 아닌 커밋은 GitHub 공식 잔디에 집계되지 않아요 (병합되면 집계)">${esc(m.branch)}</span>` : ''}</span>
+          <a class="small" href="${esc(m.url)}" target="_blank" rel="noopener"><code>${m.sha}</code></a></li>`).join('')}</ul>
+          ${r.messages.some((m) => m.branch) ? '<p class="muted small" style="margin:4px 0 0">ℹ️ 브랜치 표시가 붙은 커밋은 기본 브랜치에 병합되기 전까지 GitHub 공식 잔디에 집계되지 않아요.</p>' : ''}` : ''}
+        ${r.noAccess ? '<p class="muted small" style="margin:4px 0 0">커밋 메시지를 보려면 토큰에 이 저장소의 Contents 읽기 권한이 필요해요.</p>' : ''}
+      </div>`;
+    }).join('');
+    if (res.restricted) body += `<p class="muted small">🔒 비공개 기여 ${res.restricted}개 — 토큰으로 볼 수 없는 저장소예요.</p>`;
+    if (!body) {
+      const old = !state.settings.token && daysSince(d) > 90;
+      body = `<p class="muted">${old ? '토큰 없이는 최근 90일의 공개 활동만 볼 수 있어요. 설정에서 토큰을 넣어 주세요.' : count(selectedDay) ? '저장소 정보를 찾지 못했어요. 비공개 저장소라면 설정에서 토큰을 넣어 주세요.' : '이날은 기여가 없어요.'}</p>`;
+    }
+  }
+  return `<div class="day-detail">
+    <div class="row"><b>${title}</b><span class="muted small">잔디 ${count(selectedDay)}개</span><span class="grow"></span>
+      <button class="btn sm ghost" data-act="day-close" aria-label="닫기">✕</button></div>
+    ${body}
+  </div>`;
+}
+async function selectDay(date) {
+  selectedDay = selectedDay === date ? null : date;
+  render();
+  if (!selectedDay || dayCache[date]) return;
+  try { dayCache[date] = await fetchDayDetail(date); } catch (e) { dayCache[date] = { error: e.message }; }
+  if (selectedDay === date) render();
 }
 
 function weekHtml() {
@@ -565,6 +694,8 @@ document.addEventListener('click', async (e) => {
     case 'tab': state.tab = el.dataset.tab; commit(); break;
     case 'sync': sync(); break;
     case 'close': closeModal(); break;
+    case 'day': selectDay(el.dataset.date); break;
+    case 'day-close': selectedDay = null; render(); break;
     case 'mission-skip': state.mission.skip++; commit(); break;
     case 'mission-done': {
       const p = findP(pid); const t = p?.tasks.find((x) => x.id === tid);

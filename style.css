@@ -83,8 +83,9 @@ main { max-width: 1100px; margin: 0 auto; padding: 20px; display: grid; gap: 16p
   box-shadow: var(--shadow);
   min-width: 0;
 }
-.card h2 { margin: 0 0 12px; font-size: 15px; display: flex; align-items: center; gap: 8px; }
+.card h2 { margin: 0 0 12px; font-size: 15px; display: flex; align-items: center; gap: 4px 8px; flex-wrap: wrap; }
 .card h2 .sub { font-weight: 400; color: var(--muted); font-size: 13px; margin-left: auto; }
+@media (max-width: 760px) { .card h2 .sub { margin-left: 0; flex-basis: 100%; } }
 .muted { color: var(--muted); }
 .small { font-size: 12px; }
 .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
@@ -139,6 +140,16 @@ label.field .muted { font-weight: 400; }
 .grass .d.l3 { background: var(--g3); } .grass .d.l4 { background: var(--g4); }
 .grass .d.today { outline: 2px solid var(--text); outline-offset: -1px; }
 .grass .d.future { visibility: hidden; }
+.grass .d[data-act] { cursor: pointer; }
+.grass .d[data-act]:hover { outline: 1px solid var(--muted); outline-offset: 0; }
+.grass .d.sel { outline: 2px solid var(--accent); outline-offset: 0; }
+.day-detail { margin-top: 12px; padding: 12px 14px; border-radius: 8px; background: var(--surface-2); display: grid; gap: 10px; }
+.day-detail p { margin: 0; }
+.day-detail .sw { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+.repo-day { padding: 8px 10px; border-radius: 6px; background: var(--surface); border: 1px solid var(--border); }
+.commits { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 2px; }
+.commits li { display: flex; gap: 10px; align-items: baseline; padding: 2px 0; }
+.commits li .grow { overflow-wrap: anywhere; }
 .legend { display: flex; gap: 3px; align-items: center; font-size: 11px; color: var(--muted); justify-content: flex-end; margin-top: 8px; }
 .legend i { width: 11px; height: 11px; border-radius: 2px; display: inline-block; }
 
