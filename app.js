@@ -539,7 +539,7 @@ async function importModal() {
     openModal(`<h3>GitHub 저장소 가져오기</h3><p class="muted small">최근 push 순 · 포크/보관된 저장소 제외</p>
       <form data-form="import" style="display:grid;gap:12px">
         <div class="repo-list">${repos.map((r) => `<label><input type="checkbox" name="repo" value="${esc(r.full_name)}" ${have.has(r.full_name.toLowerCase()) ? 'disabled checked' : ''}>
-          <span class="grow"><b>${esc(r.name)}</b>${r.private ? ' <span class="size">private</span>' : ''}<br><span class="muted small">${esc(r.description || '')} · ${daysSince(r.pushed_at)}일 전 push</span></span></label>`).join('') || '<p class="muted">저장소가 없어요</p>'}</div>
+          <span class="grow"><b>${esc(r.name)}</b>${r.private ? ' <span class="size">private</span>' : ''}<br><span class="muted small">${r.description ? `${esc(r.description)} · ` : ''}${daysSince(r.pushed_at)}일 전 push</span></span></label>`).join('') || '<p class="muted">저장소가 없어요</p>'}</div>
         <div class="row"><span class="grow"></span><button type="button" class="btn" data-act="close">취소</button><button class="btn primary">가져오기</button></div>
       </form>`);
     importModal.repos = repos;
