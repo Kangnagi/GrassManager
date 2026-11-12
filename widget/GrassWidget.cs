@@ -117,15 +117,30 @@ static class GitHub
         return m.Success ? m.Groups[1].Value : null;
     }
 
+    // 기본 페이지는 최근 1년이지만 UTC 기준 '오늘'까지만 있다. 한국은 자정~오전 9시에 오늘 칸이 아직 없으므로
+    // 그때는 오늘이 든 해의 페이지(?to=오늘, 1/1~12/31)를 한 번 더 받아 합친다.
     public static Dictionary<DateTime, Day> Fetch(string user)
     {
-        string html;
+        string url = "https://github.com/users/" + Uri.EscapeDataString(user) + "/contributions";
+        var days = Parse(Download(url));
+        if (!days.ContainsKey(DateTime.Today))
+            foreach (var kv in Parse(Download(url + "?to=" + DateTime.Today.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture))))
+                days[kv.Key] = kv.Value;
+        return days;
+    }
+
+    static string Download(string url)
+    {
         using (var wc = new WebClient())
         {
             wc.Encoding = Encoding.UTF8;
             wc.Headers[HttpRequestHeader.UserAgent] = "GrassWidget";
-            html = wc.DownloadString("https://github.com/users/" + Uri.EscapeDataString(user) + "/contributions");
+            return wc.DownloadString(url);
         }
+    }
+
+    static Dictionary<DateTime, Day> Parse(string html)
+    {
 
         // 툴팁 문장("3 contributions on …", "No contributions on …")에서 칸 id별 기여 수
         var counts = new Dictionary<string, int>();
