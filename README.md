@@ -36,6 +36,19 @@ python -m http.server 5174
 3. Secret `NTFY_TOPIC`(필수), `GRASS_TOKEN`(권장), `DISCORD_WEBHOOK`(선택)을 등록하고
 4. Actions에서 **Run workflow**로 테스트합니다.
 
+## 바탕화면 위젯 (Windows)
+
+이번 주(일~토) 잔디, 연속 기록, 오늘 커밋 여부를 바탕화면에서 바로 보여 주는 작은 위젯입니다.
+
+1. `widget/build.bat`을 더블클릭해 `widget/GrassWidget.exe`를 만듭니다 (Windows 기본 .NET Framework 4 컴파일러 사용, 설치할 것 없음).
+2. `GrassWidget.exe`를 실행하고, 원하는 위치로 끌어 놓습니다.
+3. 우클릭 메뉴에서 **Windows 시작 시 자동 실행**을 켜면 로그인할 때마다 자동으로 뜹니다.
+
+- 더블클릭: 웹앱 열기 · 칸 위에 마우스: 날짜별 기여 수 · 우클릭: 새로고침 / 아이디 변경 / 종료
+- GitHub 공개 잔디 페이지를 30분마다(그리고 자정에) 한 번 읽어 옵니다. 토큰이 필요 없고, 비공개 저장소 기여까지 세려면 GitHub 프로필 설정의 **Private contributions**를 켜 두세요.
+- 애니메이션이나 주기적인 다시 그리기가 없어 평소 CPU 사용량은 거의 0%입니다.
+- 설정(아이디·위치)은 `%APPDATA%\GrassWidget\config.ini`에 저장됩니다.
+
 ## 파일 구성
 
 | 파일 | 설명 |
@@ -44,3 +57,5 @@ python -m http.server 5174
 | `style.css` | 스타일 (라이트/다크 모드) |
 | `app.js` | 앱 로직: GitHub 동기화, 잔디, 매니저, 설정 |
 | `reminder/grass-check.mjs` | GitHub Actions에서 실행되는 커밋 확인·알림 스크립트 |
+| `widget/GrassWidget.cs` | 바탕화면 위젯 소스 (C# WinForms) |
+| `widget/build.bat` | 위젯 빌드 스크립트 → `widget/GrassWidget.exe` |
