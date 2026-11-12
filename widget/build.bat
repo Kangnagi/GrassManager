@@ -5,7 +5,7 @@ cd /d "%~dp0"
 set "CSC=%WINDIR%\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
 if not exist "%CSC%" set "CSC=%WINDIR%\Microsoft.NET\Framework\v4.0.30319\csc.exe"
 "%CSC%" /nologo /codepage:65001 /target:winexe /optimize+ /out:GrassWidget.exe ^
-  /r:System.Windows.Forms.dll /r:System.Drawing.dll /r:Microsoft.VisualBasic.dll GrassWidget.cs
+  /r:System.Windows.Forms.dll /r:System.Drawing.dll GrassWidget.cs
 if errorlevel 1 (
   echo 빌드 실패
   pause
