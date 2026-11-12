@@ -70,3 +70,4 @@ python -m http.server 5174
 | `reminder/grass-check.mjs` | GitHub Actions에서 실행되는 커밋 확인·알림 스크립트 |
 | `widget/GrassWidget.cs` | 바탕화면 위젯 소스 (C# WinForms) |
 | `widget/build.bat` | 위젯 빌드 스크립트 → `widget/GrassWidget.exe` |
+| `widget/GrassWidget.ico` | 위젯 실행 파일 아이콘 (웹앱 파비콘과 같은 2×2 잔디 로고) |

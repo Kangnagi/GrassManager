@@ -334,6 +334,8 @@ class GrassWidget : Form
         using (var g = Graphics.FromHwnd(IntPtr.Zero)) dpi = g.DpiX / 96f;
 
         Text = "Grass Widget";
+        // 창 아이콘: exe에 넣은 잔디 매니저 아이콘(build.bat의 /win32icon)을 그대로 쓴다
+        try { Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath); } catch { }
         FormBorderStyle = FormBorderStyle.None;
         // ShowInTaskbar는 기본값(true) 그대로 둔다: false면 WinForms가 숨은 소유 창을 붙여 바탕화면 고정이 풀린다.
         // 작업 표시줄에는 WS_EX_TOOLWINDOW 덕분에 어차피 나타나지 않는다.
