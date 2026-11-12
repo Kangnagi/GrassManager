@@ -13,6 +13,7 @@ using System.Drawing.Drawing2D;
 using System.Globalization;
 using System.IO;
 using System.Net;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -308,6 +309,7 @@ class GrassWidget : Form
     readonly System.Windows.Forms.Timer timer = new System.Windows.Forms.Timer();
     readonly ToolTip tip = new ToolTip();
     readonly ContextMenuStrip menu = new ContextMenuStrip();
+    readonly NotifyIcon tray;
     readonly ToolStripMenuItem editItem, hideItem, autoStartItem;
     readonly Image hideIcon, showIcon;
     Dictionary<DateTime, Day> data;
@@ -334,8 +336,8 @@ class GrassWidget : Form
         using (var g = Graphics.FromHwnd(IntPtr.Zero)) dpi = g.DpiX / 96f;
 
         Text = "Grass Widget";
-        // 창 아이콘: exe에 넣은 잔디 매니저 아이콘(build.bat의 /win32icon)을 그대로 쓴다
-        try { Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath); } catch { }
+        // 창 아이콘: exe에 넣은 잔디 매니저 아이콘 (build.bat의 /resource)
+        Icon = AppIcon(SystemInformation.IconSize);
         FormBorderStyle = FormBorderStyle.None;
         // ShowInTaskbar는 기본값(true) 그대로 둔다: false면 WinForms가 숨은 소유 창을 붙여 바탕화면 고정이 풀린다.
         // 작업 표시줄에는 WS_EX_TOOLWINDOW 덕분에 어차피 나타나지 않는다.
@@ -381,10 +383,52 @@ class GrassWidget : Form
         menu.Closed += delegate { if (btnHover) { btnHover = false; Invalidate(); } };
         ContextMenuStrip = menu;
 
+        // 알림 영역(트레이) 아이콘: 왼쪽·오른쪽 클릭 모두 같은 설정 메뉴
+        tray = new NotifyIcon();
+        tray.Icon = AppIcon(SystemInformation.SmallIconSize);
+        tray.Text = "잔디 매니저";
+        tray.ContextMenuStrip = menu;
+        tray.MouseClick += delegate (object s, MouseEventArgs e) { if (e.Button == MouseButtons.Left) ShowTrayMenu(); };
+        tray.Visible = true;
+
         tip.ShowAlways = true; // 활성 창이 아니어도 툴팁 표시
         tip.InitialDelay = 300;
         timer.Tick += delegate { RefreshData(); };
         SystemEvents.PowerModeChanged += OnPowerModeChanged;
+    }
+
+    // exe에 리소스로 넣은 .ico에서 필요한 크기를 골라 쓴다 (작은 크기도 흐리지 않게). 없으면 exe 아이콘.
+    static Icon AppIcon(Size size)
+    {
+        try
+        {
+            using (var s = typeof(GrassWidget).Assembly.GetManifestResourceStream("GrassWidget.ico"))
+                if (s != null) return new Icon(s, size);
+        }
+        catch (Exception) { }
+        try { return Icon.ExtractAssociatedIcon(Application.ExecutablePath); }
+        catch (Exception) { return null; }
+    }
+
+    // 트레이 왼쪽 클릭에도 메뉴: NotifyIcon의 내부 메서드를 써야 바깥을 누를 때 메뉴가 제대로 닫힌다
+    void ShowTrayMenu()
+    {
+        var m = typeof(NotifyIcon).GetMethod("ShowContextMenu", BindingFlags.Instance | BindingFlags.NonPublic);
+        if (m != null) m.Invoke(tray, null);
+        else menu.Show(Cursor.Position);
+    }
+
+    // 트레이 툴팁: 오늘 기여 수와 연속 기록 (최대 63자)
+    void UpdateTray()
+    {
+        string text = "잔디 매니저";
+        if (data != null)
+        {
+            int t = Get(DateTime.Today).Count;
+            text += " · " + (t > 0 ? "오늘 " + t + "개" : "오늘 아직 없음") + " · 연속 " + Streak() + "일";
+        }
+        else if (error != null) text += " · " + error;
+        tray.Text = text;
     }
 
     ToolStripMenuItem AddItem(string text, Image image, EventHandler onClick)
@@ -469,6 +513,8 @@ class GrassWidget : Form
     {
         SystemEvents.PowerModeChanged -= OnPowerModeChanged; // 정적 이벤트라 꼭 해제
         timer.Dispose();
+        tray.Visible = false; // 안 숨기면 종료 후에도 마우스를 올릴 때까지 아이콘이 남는다
+        tray.Dispose();
         base.OnFormClosed(e);
     }
 
@@ -514,6 +560,7 @@ class GrassWidget : Form
         }
         else error = err;
         Invalidate();
+        UpdateTray();
         Schedule(result != null ? RefreshMs : RetryMs);
         // 받아 온 HTML(약 200KB)을 정리하고 작업 메모리를 돌려준다
         GC.Collect();

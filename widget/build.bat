@@ -4,7 +4,7 @@ rem Grass Widget 빌드 — Windows에 기본으로 있는 .NET Framework 4 컴�
 cd /d "%~dp0"
 set "CSC=%WINDIR%\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
 if not exist "%CSC%" set "CSC=%WINDIR%\Microsoft.NET\Framework\v4.0.30319\csc.exe"
-"%CSC%" /nologo /codepage:65001 /target:winexe /optimize+ /out:GrassWidget.exe /win32icon:GrassWidget.ico ^
+"%CSC%" /nologo /codepage:65001 /target:winexe /optimize+ /out:GrassWidget.exe /win32icon:GrassWidget.ico /resource:GrassWidget.ico,GrassWidget.ico ^
   /r:System.Windows.Forms.dll /r:System.Drawing.dll GrassWidget.cs
 if errorlevel 1 (
   echo 빌드 실패
