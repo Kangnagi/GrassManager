@@ -49,13 +49,25 @@ let state = load();
 function save() { try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch {} }
 
 // ───────────────────────── GitHub ─────────────────────────
+// 토큰이 만료·취소되어 GitHub가 거절(401 Bad credentials)하면 이 세션 동안은 토큰 없이 동작한다
+let tokenRejected = false;
+const activeToken = () => (tokenRejected ? '' : state.settings.token);
+function rejectToken() {
+  if (tokenRejected) return;
+  tokenRejected = true;
+  toast('토큰이 만료됐거나 취소됐어요 — 설정에서 새 토큰을 넣어 주세요. 지금은 토큰 없이(최근 90일 공개 활동) 보여 드려요');
+}
+
 function ghHeaders() {
   const h = { Accept: 'application/vnd.github+json' };
-  if (state.settings.token) h.Authorization = `Bearer ${state.settings.token}`;
+  if (activeToken()) h.Authorization = `Bearer ${activeToken()}`;
   return h;
 }
 async function gh(path) {
+  const usedToken = !!activeToken();
   const r = await fetch(`https://api.github.com${path}`, { headers: ghHeaders() });
+  // 토큰이 거절되면 토큰 없이 한 번 더 시도
+  if (r.status === 401 && usedToken) { rejectToken(); return gh(path); }
   if (!r.ok) throw new Error(`GitHub ${r.status}: ${(await r.json().catch(() => ({}))).message || r.statusText}`);
   return r.json();
 }
@@ -65,6 +77,7 @@ async function graphql(query, variables) {
     method: 'POST', headers: { ...ghHeaders(), 'Content-Type': 'application/json' },
     body: JSON.stringify({ query, variables }),
   });
+  if (r.status === 401) rejectToken();
   const j = await r.json();
   if (!r.ok || j.errors) throw new Error(j.errors?.[0]?.message || j.message || `GraphQL ${r.status}`);
   return j.data;
@@ -84,7 +97,7 @@ async function fetchEventDays(login) {
   const days = {};
   const repoDays = {}; // 날짜 → 활동한 저장소 목록 (토큰 없을 때 잔디 칸 상세보기에 사용)
   for (let page = 1; page <= 3; page++) {
-    const evs = await gh(`/users/${encodeURIComponent(login)}/events${state.settings.token ? '' : '/public'}?per_page=100&page=${page}`);
+    const evs = await gh(`/users/${encodeURIComponent(login)}/events${activeToken() ? '' : '/public'}?per_page=100&page=${page}`);
     for (const e of evs) {
       let n = 0;
       if (e.type === 'PushEvent') n = e.payload?.distinct_size ?? e.payload?.size ?? 1;
@@ -107,8 +120,8 @@ async function fetchEventDays(login) {
 }
 
 async function fetchRepos() {
-  const { username, token } = state.settings;
-  const path = token
+  const { username } = state.settings;
+  const path = activeToken()
     ? '/user/repos?affiliation=owner&sort=pushed&per_page=100'
     : `/users/${encodeURIComponent(username)}/repos?sort=pushed&per_page=100`;
   return gh(path);
@@ -117,7 +130,8 @@ async function fetchRepos() {
 // 잔디 칸 상세: 그날 어떤 저장소에 어떤 커밋/PR/이슈를 했는지
 const dayCache = {};
 async function fetchDayDetail(date) {
-  const { username, token } = state.settings;
+  const { username } = state.settings;
+  const token = activeToken();
   const from = new Date(`${date}T00:00:00`);
   const to = addDays(from, 1);
   const repos = {};
@@ -178,19 +192,23 @@ async function fetchDayDetail(date) {
 
 let syncing = false;
 async function sync({ quiet = false } = {}) {
-  const { username, token } = state.settings;
+  const { username } = state.settings;
+  const token = activeToken();
   if (!username) { if (!quiet) toast('설정에서 GitHub 아이디를 먼저 입력하세요'); return; }
   if (syncing) return;
   syncing = true; $('#syncBtn').disabled = true; $('#syncBtn').textContent = '⟳ 동기화 중…';
   try {
     const [cal, ev] = await Promise.all([
-      token ? fetchCalendar(username) : Promise.resolve(null),
+      // 토큰이 거절되면 이벤트(최근 90일)만으로 계속한다
+      token ? fetchCalendar(username).catch((e) => { if (tokenRejected) return null; throw e; }) : Promise.resolve(null),
       fetchEventDays(username).catch(() => ({ days: {}, repoDays: {} })),
     ]);
-    const days = { ...(cal || {}) };
+    // 토큰이 거절돼 캘린더를 못 받았으면 전에 받아 둔 1년치 잔디는 그대로 둔다
+    const keepOld = !cal && token && tokenRejected;
+    const days = { ...(cal || (keepOld ? state.contrib.days : {})) };
     // 캘린더는 UTC 기준일 수 있으므로 최근 날짜는 로컬 시간 기준 이벤트 수와 비교해 큰 값 사용
     for (const [k, v] of Object.entries(ev.days)) days[k] = Math.max(days[k] || 0, v);
-    state.contrib = { fetchedAt: new Date().toISOString(), days, repoDays: ev.repoDays, source: cal ? 'graphql' : 'events' };
+    state.contrib = { fetchedAt: new Date().toISOString(), days, repoDays: ev.repoDays, source: cal || keepOld ? 'graphql' : 'events' };
     for (const k of Object.keys(dayCache)) delete dayCache[k];
 
     // 연동된 프로젝트의 마지막 push 시각 갱신
@@ -403,7 +421,7 @@ function dayDetailHtml() {
     }).join('');
     if (res.restricted) body += `<p class="muted small">🔒 비공개 기여 ${res.restricted}개 — 토큰으로 볼 수 없는 저장소예요.</p>`;
     if (!body) {
-      const old = !state.settings.token && daysSince(d) > 90;
+      const old = !activeToken() && daysSince(d) > 90;
       body = `<p class="muted">${old ? '토큰 없이는 최근 90일의 공개 활동만 볼 수 있어요. 설정에서 토큰을 넣어 주세요.' : count(selectedDay) ? '저장소 정보를 찾지 못했어요. 비공개 저장소라면 설정에서 토큰을 넣어 주세요.' : '이날은 기여가 없어요.'}</p>`;
     }
   }
@@ -417,7 +435,11 @@ async function selectDay(date) {
   selectedDay = selectedDay === date ? null : date;
   render();
   if (!selectedDay || dayCache[date]) return;
-  try { dayCache[date] = await fetchDayDetail(date); } catch (e) { dayCache[date] = { error: e.message }; }
+  try { dayCache[date] = await fetchDayDetail(date); } catch (e) {
+    // 토큰이 방금 거절됐으면 토큰 없는 방식으로 다시 불러온다
+    if (tokenRejected) { try { dayCache[date] = await fetchDayDetail(date); } catch (e2) { dayCache[date] = { error: e2.message }; } }
+    else dayCache[date] = { error: e.message };
+  }
   if (selectedDay === date) render();
 }
 
@@ -445,7 +467,8 @@ function managerNotes(s, ng) {
   for (const { p, d } of ng.slice(0, 3)) notes.push(['⏳', `<b>${esc(p.name)}</b> — ${d}일째 커밋이 없어요.`, 'projects']);
   const empty = state.projects.filter((p) => !p.tasks.some((t) => !t.done));
   if (empty.length) notes.push(['📝', `할 일이 비어 있는 프로젝트: ${empty.map((p) => esc(p.name)).join(', ')}. 다음 기능을 미리 적어 두세요.`, 'projects']);
-  if (!state.settings.token) notes.push(['🔑', '토큰을 등록하면 GitHub와 똑같은 1년치 잔디를 볼 수 있어요.', 'settings']);
+  if (tokenRejected) notes.push(['🔑', '<b>토큰이 만료됐거나 취소됐어요.</b> GitHub에서 새 토큰을 만들어 설정에 넣어 주세요. 그 전까지는 최근 90일 공개 활동만 보여요.', 'settings']);
+  else if (!state.settings.token) notes.push(['🔑', '토큰을 등록하면 GitHub와 똑같은 1년치 잔디를 볼 수 있어요.', 'settings']);
   if (!state.settings.notify) notes.push(['🔔', `리마인더(${state.settings.reminderTime})를 켜면 커밋이 없는 날 알려드려요.`, 'settings']);
   if (!notes.length) return `<div class="muted">모든 게 순조로워요. 이번 주 ${s.weekDays}일 활동 중 🌿</div>`;
   return notes.map(([i, t, tab]) => `<div class="alert"><span>${i}</span><span class="grow">${t}</span><button class="btn sm" data-act="tab" data-tab="${tab}">이동</button></div>`).join('');
@@ -809,6 +832,8 @@ document.addEventListener('submit', (e) => {
     const changedUser = fd.get('username').trim() !== state.settings.username;
     Object.assign(state.settings, { username: fd.get('username').trim(), token: fd.get('token').trim(), reminderTime: fd.get('reminderTime') || '21:00' });
     if (changedUser) state.contrib = defaults().contrib;
+    tokenRejected = false; // 새 토큰으로 다시 시도
+    for (const k of Object.keys(dayCache)) delete dayCache[k];
     state.notifiedOn = null; state.tab = 'dashboard';
     commit(); sync();
   }
