@@ -16,7 +16,9 @@ GitHub 잔디(활동 기록)를 매일 꾸준히 가꿀 수 있도록 도와주�
 
 ## 실행
 
-빌드 과정 없는 정적 웹입니다. 로컬 서버로 열어 주세요.
+**https://kangnagi.github.io/GrassManager/** 에서 바로 쓸 수 있습니다 (GitHub Pages, `main` 브랜치에 push하면 자동 반영).
+
+로컬에서 열려면 빌드 과정 없는 정적 웹이므로 로컬 서버로 열어 주세요.
 
 ```bash
 python -m http.server 5174
