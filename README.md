@@ -19,10 +19,10 @@ GitHub 잔디(활동 기록)를 매일 꾸준히 가꿀 수 있도록 도와주�
 빌드 과정 없는 정적 웹입니다. 로컬 서버로 열어 주세요.
 
 ```bash
-python -m http.server 5173
+python -m http.server 5174
 ```
 
-브라우저에서 http://localhost:5173 을 열고 **설정**에서 GitHub 아이디를 입력하세요.
+브라우저에서 http://localhost:5174 을 열고 **설정**에서 GitHub 아이디를 입력하세요.
 데이터(프로젝트, 할 일, 토큰)는 브라우저 localStorage에만 저장됩니다.
 
 ## 탭이 닫혀도 알림 받기 (GitHub Actions)
