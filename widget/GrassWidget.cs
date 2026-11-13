@@ -367,14 +367,13 @@ class GrassWidget : Form
     float zoom;
     Font fTitle, fSmall, fSmallBold, fCell;
     readonly System.Windows.Forms.Timer timer = new System.Windows.Forms.Timer();
-    readonly ToolTip tip = new ToolTip();
     readonly ContextMenuStrip menu = new ContextMenuStrip();
     readonly NotifyIcon tray;
     readonly ToolStripMenuItem editItem, hideItem, autoStartItem;
     readonly Image hideIcon, showIcon;
     Dictionary<DateTime, Day> data;
     DateTime lastOk;
-    string error, tipText;
+    string error;
     bool loading, drawOwnBorder = true;
 
     // 화면 상태: 기본(고정) / 위치·크기 편집 / 숨김(아이콘)
@@ -454,8 +453,6 @@ class GrassWidget : Form
         tray.MouseClick += delegate (object s, MouseEventArgs e) { if (e.Button == MouseButtons.Left) ShowTrayMenu(); };
         tray.Visible = true;
 
-        tip.ShowAlways = true; // 활성 창이 아니어도 툴팁 표시
-        tip.InitialDelay = 300;
         timer.Tick += delegate { RefreshData(); };
         SystemEvents.PowerModeChanged += OnPowerModeChanged;
         SystemEvents.UserPreferenceChanged += OnUserPreferenceChanged;
@@ -996,7 +993,6 @@ class GrassWidget : Form
             : editing ? (Grip.Contains(e.Location) ? Cursors.SizeNWSE : Cursors.SizeAll)
             : Cursors.Default;
         if (Cursor != cursor) Cursor = cursor;
-        UpdateTip(e.Location);
     }
 
     protected override void OnMouseLeave(EventArgs e)
@@ -1039,30 +1035,6 @@ class GrassWidget : Form
         base.OnMouseDoubleClick(e);
         if (e.Button == MouseButtons.Left && !cfg.Hidden && !editing && !justExpanded && !MenuButton.Contains(e.Location))
             OpenWeb();
-    }
-
-    void UpdateTip(Point pt)
-    {
-        string text = null;
-        if (cfg.Hidden) text = "잔디 매니저 · 클릭해서 펼치기";
-        else if (MenuButton.Contains(pt)) text = editing ? "완료" : "설정";
-        else if (editing) text = "끌어서 이동 · 오른쪽 아래 모서리로 크기 조절";
-        else
-        {
-            var sunday = DateTime.Today.AddDays(-(int)DateTime.Today.DayOfWeek);
-            for (int i = 0; i < 7; i++)
-            {
-                if (!CellRect(i).Contains(pt)) continue;
-                var d = sunday.AddDays(i);
-                text = d.Month + "월 " + d.Day + "일 (" + DayNames[i] + ") · " +
-                    (d > DateTime.Today ? "아직" : Get(d).Count + "개 기여");
-            }
-            if (text == null)
-                text = (data != null ? "업데이트 " + lastOk.ToString("HH:mm") + " · " : "") + "더블클릭: 홈페이지 열기";
-        }
-        if (text == tipText) return; // 같은 내용이면 툴팁을 다시 만들지 않음
-        tipText = text;
-        tip.SetToolTip(this, text);
     }
 
     // ── 테마·투명도 ─────────────────────────────────────
@@ -1412,7 +1384,6 @@ class GrassWidget : Form
         if (disposing)
         {
             fTitle.Dispose(); fSmall.Dispose(); fSmallBold.Dispose(); fCell.Dispose();
-            tip.Dispose();
             menu.Dispose();
         }
         base.Dispose(disposing);
