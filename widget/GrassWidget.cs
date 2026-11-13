@@ -305,7 +305,7 @@ class LightMenuRenderer : ToolStripProfessionalRenderer
 
 class GrassWidget : Form
 {
-    const int WS_EX_TOOLWINDOW = 0x80, WS_EX_NOACTIVATE = 0x08000000;
+    const int WS_EX_TOOLWINDOW = 0x80, WS_EX_APPWINDOW = 0x40000, WS_EX_NOACTIVATE = 0x08000000;
     const int GWL_HWNDPARENT = -8;
     const int RefreshMs = 30 * 60 * 1000, RetryMs = 5 * 60 * 1000;
     const int BaseW = 236, BaseH = 106, IconSize = 44; // 배율 1일 때 위젯·숨김 아이콘 크기
@@ -398,7 +398,7 @@ class GrassWidget : Form
         Icon = AppIcon(SystemInformation.IconSize);
         FormBorderStyle = FormBorderStyle.None;
         // ShowInTaskbar는 기본값(true) 그대로 둔다: false면 WinForms가 숨은 소유 창을 붙여 바탕화면 고정이 풀린다.
-        // 작업 표시줄에는 WS_EX_TOOLWINDOW 덕분에 어차피 나타나지 않는다.
+        // 대신 WinForms가 붙이는 WS_EX_APPWINDOW는 CreateParams에서 떼어 작업 표시줄·Alt+Tab에서 뺀다.
         MaximizeBox = MinimizeBox = false;
         StartPosition = FormStartPosition.Manual;
         SetPalette(IsLight);
@@ -518,6 +518,9 @@ class GrassWidget : Form
         {
             var cp = base.CreateParams;
             cp.ExStyle |= WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE;
+            // ShowInTaskbar=true면 WinForms가 WS_EX_APPWINDOW를 붙이는데, 이게 있으면 도구 창이어도
+            // 작업 표시줄과 Alt+Tab에 나타난다. 떼어 내야 둘 다에서 빠진다.
+            cp.ExStyle &= ~WS_EX_APPWINDOW;
             return cp;
         }
     }
