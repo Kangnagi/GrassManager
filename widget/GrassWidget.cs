@@ -43,7 +43,7 @@ static class Program
 
 // 설정: %APPDATA%\GrassWidget\config.ini
 // (user=아이디, web=홈페이지 주소, x/y=위치, zoom=크기 배율, hidden=숨김 상태,
-//  theme=dark/light/system, opacity=불투명도 %)
+//  theme=dark/light/system, opacity=불투명도 %, watch=push를 감지할 저장소 폴더, 비우면 끔)
 class Config
 {
     public const float MinZoom = 0.75f, MaxZoom = 2f;
@@ -55,6 +55,7 @@ class Config
     public bool Hidden;
     public string Theme = "dark";
     public int Opacity = 100;
+    public string Watch = Directory.Exists(@"C:\dev") ? @"C:\dev" : "";
 
     static string Dir
     {
@@ -81,6 +82,7 @@ class Config
                     c.Zoom = Math.Max(MinZoom, Math.Min(MaxZoom, f));
                 else if (k == "hidden") c.Hidden = v == "1";
                 else if (k == "theme" && (v == "dark" || v == "light" || v == "system")) c.Theme = v;
+                else if (k == "watch") c.Watch = v;
                 else if (k == "opacity" && int.TryParse(v, out n)) c.Opacity = Math.Max(MinOpacity, Math.Min(100, n));
             }
         }
@@ -98,7 +100,7 @@ class Config
                 "user=" + User + "\r\nweb=" + Web + "\r\nx=" + X + "\r\ny=" + Y +
                 "\r\nzoom=" + Zoom.ToString("0.00", CultureInfo.InvariantCulture) +
                 "\r\nhidden=" + (Hidden ? "1" : "0") +
-                "\r\ntheme=" + Theme + "\r\nopacity=" + Opacity + "\r\n", Encoding.UTF8);
+                "\r\ntheme=" + Theme + "\r\nopacity=" + Opacity + "\r\nwatch=" + Watch + "\r\n", Encoding.UTF8);
         }
         catch (IOException) { }
         catch (UnauthorizedAccessException) { }
@@ -569,6 +571,7 @@ class GrassWidget : Form
         PinToDesktop();
         SetWindowPos(Handle, (IntPtr)1, 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0010); // 맨 아래로 (NOSIZE|NOMOVE|NOACTIVATE)
         RefreshData();
+        StartWatch();
     }
 
     protected override void OnFormClosed(FormClosedEventArgs e)
@@ -576,6 +579,7 @@ class GrassWidget : Form
         SystemEvents.PowerModeChanged -= OnPowerModeChanged; // 정적 이벤트라 꼭 해제
         SystemEvents.UserPreferenceChanged -= OnUserPreferenceChanged;
         timer.Dispose();
+        if (watcher != null) watcher.Dispose();
         tray.Visible = false; // 안 숨기면 종료 후에도 마우스를 올릴 때까지 아이콘이 남는다
         tray.Dispose();
         base.OnFormClosed(e);
@@ -624,10 +628,81 @@ class GrassWidget : Form
         else error = err;
         Invalidate();
         UpdateTray();
-        Schedule(result != null ? RefreshMs : RetryMs);
+        // push 직후라면 오늘 기여 수가 늘어날 때까지 짧은 간격으로 다시 읽는다
+        bool bursting = burstUntil > DateTime.Now && Get(DateTime.Today).Count <= burstBase;
+        if (!bursting) burstUntil = DateTime.MinValue;
+        Schedule(bursting ? BurstRetryMs : result != null ? RefreshMs : RetryMs);
         // 받아 온 HTML(약 200KB)을 정리하고 작업 메모리를 돌려준다
         GC.Collect();
         EmptyWorkingSet(Process.GetCurrentProcess().Handle);
+    }
+
+    // ── push 감지 ───────────────────────────────────────
+    // 지정 폴더(기본 C:\dev) 아래 저장소의 원격 브랜치 reflog(.git\logs\refs\remotes\…)를 지켜보다가
+    // 마지막 줄이 "update by push"면 push로 보고 잔디를 바로, 그리고 반영될 때까지 짧은 간격으로 다시 읽는다.
+    // 파일이 바뀔 때만 Windows가 알려 주므로 평소 CPU 사용은 없다.
+
+    const int BurstFirstMs = 5 * 1000, BurstRetryMs = 20 * 1000, BurstMaxMs = 3 * 60 * 1000;
+    FileSystemWatcher watcher;
+    DateTime burstUntil = DateTime.MinValue;
+    int burstBase;
+
+    void StartWatch()
+    {
+        if (string.IsNullOrEmpty(cfg.Watch) || !Directory.Exists(cfg.Watch)) return;
+        try
+        {
+            watcher = new FileSystemWatcher(cfg.Watch);
+            watcher.IncludeSubdirectories = true;
+            watcher.NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.FileName;
+            watcher.InternalBufferSize = 64 * 1024; // 빌드 등으로 이벤트가 몰려도 덜 넘치게
+            watcher.Changed += OnRepoFileChanged;
+            watcher.Created += OnRepoFileChanged;
+            watcher.Renamed += OnRepoFileChanged;
+            watcher.EnableRaisingEvents = true;
+        }
+        catch (Exception) { watcher = null; }
+    }
+
+    // 감시 스레드에서 불린다: 경로만 보고 빨리 거른 뒤, push일 때만 화면 스레드로 넘긴다
+    void OnRepoFileChanged(object sender, FileSystemEventArgs e)
+    {
+        string p = e.FullPath;
+        if (p.IndexOf(@"\.git\logs\refs\remotes\", StringComparison.OrdinalIgnoreCase) < 0) return;
+        if (p.EndsWith(".lock", StringComparison.OrdinalIgnoreCase)) return;
+        if (!LastLineIsPush(p)) return; // fetch·pull로 바뀐 것은 무시
+        try { BeginInvoke((MethodInvoker)OnPushDetected); }
+        catch (InvalidOperationException) { } // 창이 닫히는 중
+    }
+
+    static bool LastLineIsPush(string path)
+    {
+        for (int attempt = 0; attempt < 3; attempt++)
+        {
+            try
+            {
+                using (var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
+                {
+                    long start = Math.Max(0, fs.Length - 512); // 마지막 줄만 보면 되므로 끝부분만 읽는다
+                    fs.Seek(start, SeekOrigin.Begin);
+                    var buf = new byte[fs.Length - start];
+                    int n = fs.Read(buf, 0, buf.Length);
+                    string tail = Encoding.UTF8.GetString(buf, 0, n).TrimEnd('\n', '\r');
+                    int nl = tail.LastIndexOf('\n');
+                    return (nl >= 0 ? tail.Substring(nl + 1) : tail).EndsWith("update by push");
+                }
+            }
+            catch (IOException) { Thread.Sleep(50); } // git이 쓰는 중이면 잠깐 뒤 다시
+            catch (UnauthorizedAccessException) { return false; }
+        }
+        return false;
+    }
+
+    void OnPushDetected()
+    {
+        if (burstUntil < DateTime.Now) burstBase = Get(DateTime.Today).Count; // 새 묶음 시작: 지금 수를 기준으로
+        burstUntil = DateTime.Now.AddMilliseconds(BurstMaxMs);
+        if (!loading) Schedule(BurstFirstMs);
     }
 
     // 다음 새로고침: 정해진 간격과 자정 중 빠른 쪽 (자정이 지나면 오늘 칸이 바뀌므로)
