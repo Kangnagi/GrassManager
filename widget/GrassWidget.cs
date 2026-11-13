@@ -42,15 +42,19 @@ static class Program
 }
 
 // 설정: %APPDATA%\GrassWidget\config.ini
-// (user=아이디, web=홈페이지 주소, x/y=위치, zoom=크기 배율, hidden=숨김 상태)
+// (user=아이디, web=홈페이지 주소, x/y=위치, zoom=크기 배율, hidden=숨김 상태,
+//  theme=dark/light/system, opacity=불투명도 %)
 class Config
 {
     public const float MinZoom = 0.75f, MaxZoom = 2f;
+    public const int MinOpacity = 30;
     public string User = "Kangnagi";
     public string Web = "https://kangnagi.github.io/GrassManager/";
     public int X = int.MinValue, Y = int.MinValue;
     public float Zoom = 1f;
     public bool Hidden;
+    public string Theme = "dark";
+    public int Opacity = 100;
 
     static string Dir
     {
@@ -76,6 +80,8 @@ class Config
                 else if (k == "zoom" && float.TryParse(v, NumberStyles.Float, CultureInfo.InvariantCulture, out f))
                     c.Zoom = Math.Max(MinZoom, Math.Min(MaxZoom, f));
                 else if (k == "hidden") c.Hidden = v == "1";
+                else if (k == "theme" && (v == "dark" || v == "light" || v == "system")) c.Theme = v;
+                else if (k == "opacity" && int.TryParse(v, out n)) c.Opacity = Math.Max(MinOpacity, Math.Min(100, n));
             }
         }
         catch (IOException) { }
@@ -91,7 +97,8 @@ class Config
             File.WriteAllText(Path.Combine(Dir, "config.ini"),
                 "user=" + User + "\r\nweb=" + Web + "\r\nx=" + X + "\r\ny=" + Y +
                 "\r\nzoom=" + Zoom.ToString("0.00", CultureInfo.InvariantCulture) +
-                "\r\nhidden=" + (Hidden ? "1" : "0") + "\r\n", Encoding.UTF8);
+                "\r\nhidden=" + (Hidden ? "1" : "0") +
+                "\r\ntheme=" + Theme + "\r\nopacity=" + Opacity + "\r\n", Encoding.UTF8);
         }
         catch (IOException) { }
         catch (UnauthorizedAccessException) { }
@@ -213,6 +220,17 @@ static class Icons
                     g.DrawArc(pen, 2.5f, 2.5f, 11, 11, -60, 300);
                     g.DrawLines(pen, new[] { new PointF(10.5f, 1.5f), new PointF(11.2f, 3.8f), new PointF(8.8f, 4.6f) });
                     break;
+                case "settings": // 조절 막대 3개
+                    g.DrawLine(pen, 2, 4, 14, 4);
+                    g.DrawLine(pen, 2, 8, 14, 8);
+                    g.DrawLine(pen, 2, 12, 14, 12);
+                    using (var b = new SolidBrush(Color.White))
+                        foreach (var p in new[] { new PointF(10, 4), new PointF(5, 8), new PointF(9, 12) })
+                        {
+                            g.FillEllipse(b, p.X - 1.8f, p.Y - 1.8f, 3.6f, 3.6f);
+                            g.DrawEllipse(pen, p.X - 1.8f, p.Y - 1.8f, 3.6f, 3.6f);
+                        }
+                    break;
                 case "power": // 전원
                     g.DrawArc(pen, 2.5f, 3, 11, 11, -50, 280);
                     g.DrawLine(pen, 8, 1.5f, 8, 7.5f);
@@ -300,20 +318,45 @@ class GrassWidget : Form
     [DllImport("dwmapi.dll")] static extern int DwmSetWindowAttribute(IntPtr h, int attr, ref int value, int size);
     [DllImport("psapi.dll")] static extern bool EmptyWorkingSet(IntPtr process);
 
-    // GitHub 다크 테마 색
-    static readonly Color Bg = Color.FromArgb(13, 17, 23);
-    static readonly Color Line = Color.FromArgb(48, 54, 61);
-    static readonly Color Fg = Color.FromArgb(230, 237, 243);
-    static readonly Color Muted = Color.FromArgb(125, 133, 144);
-    static readonly Color Ok = Color.FromArgb(57, 211, 83);
-    static readonly Color Warn = Color.FromArgb(240, 136, 62);
-    static readonly Color HoverBg = Color.FromArgb(33, 38, 45);
-    static readonly Color FutureCell = Color.FromArgb(22, 27, 34);
-    static readonly Color[] Levels =
+    // 테마 색 (GitHub 다크/라이트). SetTheme에서 바꾼다.
+    static Color Bg, Line, Fg, Muted, Ok, Warn, HoverBg, FutureCell;
+    static Color[] Levels;
+
+    static void SetPalette(bool light)
     {
-        Color.FromArgb(33, 38, 45), Color.FromArgb(14, 68, 41), Color.FromArgb(0, 109, 50),
-        Color.FromArgb(38, 166, 65), Color.FromArgb(57, 211, 83)
-    };
+        if (light)
+        {
+            Bg = Color.White; Line = Color.FromArgb(208, 215, 222);
+            Fg = Color.FromArgb(31, 35, 40); Muted = Color.FromArgb(89, 99, 110);
+            Ok = Color.FromArgb(26, 127, 55); Warn = Color.FromArgb(188, 76, 0);
+            HoverBg = Color.FromArgb(234, 238, 242); FutureCell = Color.FromArgb(246, 248, 250);
+            Levels = new[] { Color.FromArgb(235, 237, 240), Color.FromArgb(155, 233, 168), Color.FromArgb(64, 196, 99),
+                             Color.FromArgb(48, 161, 78), Color.FromArgb(33, 110, 57) };
+        }
+        else
+        {
+            Bg = Color.FromArgb(13, 17, 23); Line = Color.FromArgb(48, 54, 61);
+            Fg = Color.FromArgb(230, 237, 243); Muted = Color.FromArgb(125, 133, 144);
+            Ok = Color.FromArgb(57, 211, 83); Warn = Color.FromArgb(240, 136, 62);
+            HoverBg = Color.FromArgb(33, 38, 45); FutureCell = Color.FromArgb(22, 27, 34);
+            Levels = new[] { Color.FromArgb(33, 38, 45), Color.FromArgb(14, 68, 41), Color.FromArgb(0, 109, 50),
+                             Color.FromArgb(38, 166, 65), Color.FromArgb(57, 211, 83) };
+        }
+    }
+
+    // Windows 앱 모드(설정 → 개인 설정 → 색)가 라이트인지
+    static bool SystemLight()
+    {
+        try
+        {
+            using (var k = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize"))
+            {
+                object v = k == null ? null : k.GetValue("AppsUseLightTheme");
+                return v is int && (int)v != 0;
+            }
+        }
+        catch (Exception) { return false; }
+    }
     static readonly string[] DayNames = { "일", "월", "화", "수", "목", "금", "토" };
     static readonly Day Empty = new Day();
 
@@ -358,7 +401,9 @@ class GrassWidget : Form
         // 작업 표시줄에는 WS_EX_TOOLWINDOW 덕분에 어차피 나타나지 않는다.
         MaximizeBox = MinimizeBox = false;
         StartPosition = FormStartPosition.Manual;
+        SetPalette(IsLight);
         BackColor = Bg;
+        Opacity = cfg.Opacity / 100.0;
         DoubleBuffered = true;
         CreateFonts();
 
@@ -377,6 +422,7 @@ class GrassWidget : Form
         menu.Padding = new Padding(0, D(4), 0, D(4));
         editItem = AddItem("위치 및 크기 조절", Icons.Make("move", icon), delegate { StartEdit(); });
         hideItem = AddItem("위젯 숨기기", hideIcon, delegate { SetHidden(!cfg.Hidden); });
+        AddItem("위젯 설정", Icons.Make("settings", icon), delegate { OpenSettings(); });
         menu.Items.Add(new ToolStripSeparator());
         AddItem("계정 설정", Icons.Make("user", icon), delegate { OpenWeb(); });
         AddItem("새로고침", Icons.Make("refresh", icon), delegate { RefreshData(); });
@@ -410,6 +456,7 @@ class GrassWidget : Form
         tip.InitialDelay = 300;
         timer.Tick += delegate { RefreshData(); };
         SystemEvents.PowerModeChanged += OnPowerModeChanged;
+        SystemEvents.UserPreferenceChanged += OnUserPreferenceChanged;
     }
 
     // exe에 리소스로 넣은 .ico에서 필요한 크기를 골라 쓴다 (작은 크기도 흐리지 않게). 없으면 exe 아이콘.
@@ -515,10 +562,7 @@ class GrassWidget : Form
     protected override void OnShown(EventArgs e)
     {
         base.OnShown(e);
-        // Windows 11: 둥근 모서리 + 테두리 색 (Windows 10에서는 실패하고 직접 테두리를 그림)
-        int round = 2, border = Line.R | (Line.G << 8) | (Line.B << 16);
-        if (DwmSetWindowAttribute(Handle, 33, ref round, 4) == 0 &&
-            DwmSetWindowAttribute(Handle, 34, ref border, 4) == 0) drawOwnBorder = false;
+        ApplyFrame();
         PinToDesktop();
         SetWindowPos(Handle, (IntPtr)1, 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0010); // 맨 아래로 (NOSIZE|NOMOVE|NOACTIVATE)
         RefreshData();
@@ -527,6 +571,7 @@ class GrassWidget : Form
     protected override void OnFormClosed(FormClosedEventArgs e)
     {
         SystemEvents.PowerModeChanged -= OnPowerModeChanged; // 정적 이벤트라 꼭 해제
+        SystemEvents.UserPreferenceChanged -= OnUserPreferenceChanged;
         timer.Dispose();
         tray.Visible = false; // 안 숨기면 종료 후에도 마우스를 올릴 때까지 아이콘이 남는다
         tray.Dispose();
@@ -940,6 +985,323 @@ class GrassWidget : Form
         if (text == tipText) return; // 같은 내용이면 툴팁을 다시 만들지 않음
         tipText = text;
         tip.SetToolTip(this, text);
+    }
+
+    // ── 테마·투명도 ─────────────────────────────────────
+
+    bool IsLight { get { return cfg.Theme == "light" || (cfg.Theme == "system" && SystemLight()); } }
+
+    // Windows 11: 둥근 모서리 + 테두리 색 (Windows 10에서는 실패하고 직접 테두리를 그림)
+    void ApplyFrame()
+    {
+        int round = 2, border = Line.R | (Line.G << 8) | (Line.B << 16);
+        drawOwnBorder = !(DwmSetWindowAttribute(Handle, 33, ref round, 4) == 0 &&
+                          DwmSetWindowAttribute(Handle, 34, ref border, 4) == 0);
+    }
+
+    void ApplyTheme()
+    {
+        SetPalette(IsLight);
+        BackColor = Bg;
+        if (IsHandleCreated) ApplyFrame();
+        Invalidate();
+        if (settingsForm != null && !settingsForm.IsDisposed) settingsForm.Retheme();
+    }
+
+    // Windows 다크/라이트 모드가 바뀌면 'Windows 설정 따르기'일 때 따라간다
+    void OnUserPreferenceChanged(object sender, UserPreferenceChangedEventArgs e)
+    {
+        if (e.Category != UserPreferenceCategory.General || cfg.Theme != "system") return;
+        if (InvokeRequired) BeginInvoke((MethodInvoker)ApplyTheme);
+        else ApplyTheme();
+    }
+
+    // 투명도 0~70% (불투명도 100~30%)
+    void SetTransparency(int percent)
+    {
+        cfg.Opacity = Math.Max(Config.MinOpacity, Math.Min(100, 100 - percent));
+        Opacity = cfg.Opacity / 100.0;
+        PinToDesktop(); // 창 스타일이 다시 적용될 때를 대비해 바탕화면 고정을 다시 건다
+    }
+
+    SettingsWindow settingsForm;
+
+    // 위젯 설정 창: 테마, 투명도. 바꾸는 즉시 위젯에 적용하고 저장한다.
+    void OpenSettings()
+    {
+        if (settingsForm != null && !settingsForm.IsDisposed) { settingsForm.Activate(); return; }
+        settingsForm = new SettingsWindow(this);
+        settingsForm.Show();
+        settingsForm.Activate();
+    }
+
+    // 웹앱(Grass Manager)과 같은 모양으로 직접 그리는 설정 창: 상단 바 + 카드 + 탭형 선택 + 초록 슬라이더
+    class SettingsWindow : Form
+    {
+        static readonly string[] ThemeKeys = { "dark", "light", "system" };
+        static readonly string[] Names = { "다크", "라이트", "Windows 설정" };
+        const int W = 360, H = 288;
+
+        readonly GrassWidget owner;
+        readonly Font fTitle = new Font("Malgun Gothic", 11f, FontStyle.Bold);
+        readonly Font fLabel = new Font("Malgun Gothic", 9.5f, FontStyle.Bold);
+        readonly Font fText = new Font("Malgun Gothic", 9.5f);
+        readonly Font fTextBold = new Font("Malgun Gothic", 9.5f, FontStyle.Bold);
+        readonly Font fSmall = new Font("Malgun Gothic", 8.5f);
+        // 웹앱 style.css의 --bg, --surface, --surface-2, --border, --text, --muted, --accent
+        Color cBg, cSurface, cSurface2, cBorder, cText, cMuted, cAccent;
+        string hover;       // 마우스가 올라간 요소: close, seg0~2, done, slider
+        bool sliding;
+
+        public SettingsWindow(GrassWidget owner)
+        {
+            this.owner = owner;
+            Text = "위젯 설정";
+            Icon = owner.Icon;
+            FormBorderStyle = FormBorderStyle.None;
+            StartPosition = FormStartPosition.CenterScreen;
+            TopMost = true;
+            KeyPreview = true;
+            DoubleBuffered = true;
+            AutoScaleMode = AutoScaleMode.None;
+            ClientSize = new Size(P(W), P(H));
+            Retheme();
+        }
+
+        int P(float v) { return owner.D(v); }
+        Rectangle R(float x, float y, float w, float h) { return new Rectangle(P(x), P(y), P(w), P(h)); }
+
+        protected override CreateParams CreateParams
+        {
+            get
+            {
+                var cp = base.CreateParams;
+                cp.ClassStyle |= 0x20000; // CS_DROPSHADOW: 테두리 없는 창에도 그림자
+                return cp;
+            }
+        }
+
+        protected override void OnHandleCreated(EventArgs e)
+        {
+            base.OnHandleCreated(e);
+            ApplyFrame();
+        }
+
+        void ApplyFrame()
+        {
+            int round = 2, border = cBorder.R | (cBorder.G << 8) | (cBorder.B << 16);
+            DwmSetWindowAttribute(Handle, 33, ref round, 4); // Windows 11 둥근 모서리
+            DwmSetWindowAttribute(Handle, 34, ref border, 4);
+        }
+
+        // 위젯 테마가 바뀌면 설정 창 색도 같이 바뀐다
+        public void Retheme()
+        {
+            if (owner.IsLight)
+            {
+                cBg = Hex(0xf6f8fa); cSurface = Hex(0xffffff); cSurface2 = Hex(0xf0f3f6); cBorder = Hex(0xd0d7de);
+                cText = Hex(0x1f2328); cMuted = Hex(0x656d76); cAccent = Hex(0x1f883d);
+            }
+            else
+            {
+                cBg = Hex(0x0d1117); cSurface = Hex(0x161b22); cSurface2 = Hex(0x1c2129); cBorder = Hex(0x30363d);
+                cText = Hex(0xe6edf3); cMuted = Hex(0x8d96a0); cAccent = Hex(0x2ea043);
+            }
+            BackColor = cBg;
+            if (IsHandleCreated) ApplyFrame();
+            Invalidate();
+        }
+
+        static Color Hex(int v) { return Color.FromArgb((v >> 16) & 255, (v >> 8) & 255, v & 255); }
+
+        // ── 배치 (논리 좌표, P로 화면 배율 적용) ──
+        Rectangle Header { get { return R(0, 0, W, 52); } }
+        Rectangle CloseBtn { get { return R(W - 44, 12, 28, 28); } }
+        Rectangle Card { get { return R(16, 68, W - 32, 156); } }
+        Rectangle SegBox { get { return R(32, 106, W - 64, 34); } }
+        Rectangle Seg(int i)
+        {
+            var b = SegBox;
+            int pad = P(3), w = (b.Width - pad * 2) / 3;
+            return new Rectangle(b.X + pad + i * w, b.Y + pad, i == 2 ? b.Right - pad - (b.X + pad + i * w) : w, b.Height - pad * 2);
+        }
+        Rectangle Track { get { return R(40, 183, W - 80, 6); } }
+        Rectangle SliderHit { get { return R(28, 170, W - 56, 32); } }
+        Rectangle DoneBtn { get { return R(W - 16 - 80, 240, 80, 32); } }
+
+        int Transparency { get { return 100 - owner.cfg.Opacity; } }
+        const int MaxT = 100 - Config.MinOpacity;
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            var g = e.Graphics;
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+
+            // 상단 바: 로고 + 제목 + 닫기 (웹앱 .topbar)
+            using (var b = new SolidBrush(cSurface)) g.FillRectangle(b, Header);
+            using (var pen = new Pen(cBorder)) g.DrawLine(pen, 0, Header.Bottom - 1, Width, Header.Bottom - 1);
+            DrawLogo(g, P(18), P(18), P(7), P(2));
+            Text_(g, "위젯 설정", fTitle, cText, R(44, 0, 200, 52), TextFormatFlags.VerticalCenter);
+            if (hover == "close") Fill(g, cSurface2, CloseBtn, P(6));
+            using (var pen = new Pen(hover == "close" ? cText : cMuted, Math.Max(1f, P(1.6f))))
+            {
+                pen.StartCap = pen.EndCap = LineCap.Round;
+                var c = CloseBtn; int m = P(9);
+                g.DrawLine(pen, c.X + m, c.Y + m, c.Right - m, c.Bottom - m);
+                g.DrawLine(pen, c.Right - m, c.Y + m, c.X + m, c.Bottom - m);
+            }
+
+            // 카드 (웹앱 .card)
+            Fill(g, cSurface, Card, P(10));
+            using (var path = RoundRect(Card, P(10)))
+            using (var pen = new Pen(cBorder)) g.DrawPath(pen, path);
+
+            // 테마: 탭형 선택 (웹앱 .tabs — 고른 것은 surface-2 바탕 + 굵게)
+            Text_(g, "테마", fLabel, cText, R(32, 80, 120, 20), TextFormatFlags.Left);
+            Fill(g, cBg, SegBox, P(8));
+            using (var path = RoundRect(SegBox, P(8)))
+            using (var pen = new Pen(cBorder)) g.DrawPath(pen, path);
+            for (int i = 0; i < 3; i++)
+            {
+                bool on = owner.cfg.Theme == ThemeKeys[i];
+                var r = Seg(i);
+                if (on)
+                {
+                    Fill(g, cSurface, r, P(6));
+                    using (var path = RoundRect(r, P(6)))
+                    using (var pen = new Pen(cBorder)) g.DrawPath(pen, path);
+                }
+                else if (hover == "seg" + i) Fill(g, cSurface2, r, P(6));
+                Text_(g, Names[i], on ? fTextBold : fText, on || hover == "seg" + i ? cText : cMuted, r,
+                    TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+            }
+
+            // 투명도: 초록 슬라이더
+            int t = Transparency;
+            Text_(g, "투명도", fLabel, cText, R(32, 152, 120, 20), TextFormatFlags.Left);
+            Text_(g, t == 0 ? "불투명" : t + "%", fText, cMuted, R(W - 32 - 100, 152, 100, 20), TextFormatFlags.Right);
+            var tr = Track;
+            Fill(g, cSurface2, tr, tr.Height / 2);
+            using (var path = RoundRect(tr, tr.Height / 2))
+            using (var pen = new Pen(cBorder)) g.DrawPath(pen, path);
+            int kx = tr.X + (int)Math.Round(tr.Width * t / (float)MaxT);
+            if (kx - tr.X > 0) Fill(g, cAccent, new Rectangle(tr.X, tr.Y, Math.Max(tr.Height, kx - tr.X), tr.Height), tr.Height / 2);
+            int kr = P(sliding || hover == "slider" ? 9 : 8), ky = tr.Y + tr.Height / 2;
+            var knob = new Rectangle(kx - kr, ky - kr, kr * 2, kr * 2);
+            using (var b = new SolidBrush(cSurface)) g.FillEllipse(b, knob);
+            using (var pen = new Pen(cAccent, Math.Max(1.5f, P(2f)))) g.DrawEllipse(pen, knob);
+            Text_(g, "0%", fSmall, cMuted, R(32, 198, 80, 16), TextFormatFlags.Left);
+            Text_(g, "70%", fSmall, cMuted, R(W - 32 - 80, 198, 80, 16), TextFormatFlags.Right);
+
+            // 하단: 안내 + 완료 (웹앱 .btn.primary)
+            Text_(g, "바꾸면 위젯에 바로 적용돼요", fSmall, cMuted, R(20, 240, 200, 32), TextFormatFlags.VerticalCenter);
+            var done = DoneBtn;
+            Fill(g, hover == "done" ? ControlPaint.Light(cAccent, 0.15f) : cAccent, done, P(6));
+            Text_(g, "완료", fTextBold, Color.White, done, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+        }
+
+        static void Text_(Graphics g, string s, Font f, Color c, Rectangle r, TextFormatFlags flags)
+        {
+            TextRenderer.DrawText(g, s, f, r, c, flags | TextFormatFlags.NoPadding | TextFormatFlags.SingleLine);
+        }
+
+        string HitTest(Point p)
+        {
+            if (CloseBtn.Contains(p)) return "close";
+            for (int i = 0; i < 3; i++) if (Seg(i).Contains(p)) return "seg" + i;
+            if (SliderHit.Contains(p)) return "slider";
+            if (DoneBtn.Contains(p)) return "done";
+            if (Header.Contains(p)) return "header";
+            return null;
+        }
+
+        void SetFromX(int x)
+        {
+            var tr = Track;
+            float ratio = Math.Max(0f, Math.Min(1f, (x - tr.X) / (float)tr.Width));
+            int t = (int)Math.Round(ratio * MaxT / 5f) * 5; // 5% 단위
+            if (t == Transparency) return;
+            owner.SetTransparency(t);
+            Invalidate();
+        }
+
+        void SetTheme(string key)
+        {
+            if (owner.cfg.Theme == key) return;
+            owner.cfg.Theme = key;
+            owner.cfg.Save();
+            owner.ApplyTheme(); // 위젯과 이 창(Retheme) 모두 다시 그림
+        }
+
+        [DllImport("user32.dll")] static extern bool ReleaseCapture();
+        [DllImport("user32.dll")] static extern IntPtr SendMessage(IntPtr h, int msg, IntPtr w, IntPtr l);
+
+        protected override void OnMouseDown(MouseEventArgs e)
+        {
+            base.OnMouseDown(e);
+            if (e.Button != MouseButtons.Left) return;
+            string hit = HitTest(e.Location);
+            if (hit == "header")
+            {
+                ReleaseCapture();
+                SendMessage(Handle, 0xA1, (IntPtr)2, IntPtr.Zero); // 상단 바를 끌어 창 이동 (WM_NCLBUTTONDOWN, HTCAPTION)
+            }
+            else if (hit == "slider")
+            {
+                sliding = true;
+                SetFromX(e.X);
+            }
+            else if (hit != null && hit.StartsWith("seg")) SetTheme(ThemeKeys[hit[3] - '0']);
+        }
+
+        protected override void OnMouseMove(MouseEventArgs e)
+        {
+            base.OnMouseMove(e);
+            if (sliding) { SetFromX(e.X); return; }
+            string hit = HitTest(e.Location);
+            if (hit == "header") hit = null;
+            if (hit != hover) { hover = hit; Invalidate(); }
+            Cursor = hit != null ? Cursors.Hand : Cursors.Default;
+        }
+
+        protected override void OnMouseLeave(EventArgs e)
+        {
+            base.OnMouseLeave(e);
+            if (hover != null && !sliding) { hover = null; Invalidate(); }
+        }
+
+        protected override void OnMouseUp(MouseEventArgs e)
+        {
+            base.OnMouseUp(e);
+            if (sliding) { sliding = false; owner.cfg.Save(); Invalidate(); return; }
+            string hit = HitTest(e.Location);
+            if (hit == "close" || hit == "done") Close();
+        }
+
+        protected override void OnKeyDown(KeyEventArgs e)
+        {
+            base.OnKeyDown(e);
+            if (e.KeyCode == Keys.Escape || e.KeyCode == Keys.Enter) Close();
+            else if (e.KeyCode == Keys.Left || e.KeyCode == Keys.Right)
+            {
+                int t = Math.Max(0, Math.Min(MaxT, Transparency + (e.KeyCode == Keys.Right ? 5 : -5)));
+                owner.SetTransparency(t);
+                owner.cfg.Save();
+                Invalidate();
+            }
+        }
+
+        protected override void OnFormClosed(FormClosedEventArgs e)
+        {
+            owner.cfg.Save();
+            base.OnFormClosed(e);
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing) { fTitle.Dispose(); fLabel.Dispose(); fText.Dispose(); fTextBold.Dispose(); fSmall.Dispose(); }
+            base.Dispose(disposing);
+        }
     }
 
     // ── 메뉴 동작 ───────────────────────────────────────
