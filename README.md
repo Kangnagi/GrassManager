@@ -63,6 +63,22 @@ python -m http.server 5174
 - 애니메이션이나 주기적인 다시 그리기가 없어 평소 CPU 사용량은 거의 0%입니다.
 - 설정(아이디·위치·크기·숨김 상태·테마·투명도·감시 폴더)은 `%APPDATA%\GrassWidget\config.ini`에 저장됩니다.
 
+## 휴대폰 홈 화면 위젯 (Android)
+
+PC 위젯과 같은 모양(이번 주 일~토 잔디, 연속 기록, 오늘 기여 수)을 휴대폰 홈 화면에 띄우는 안드로이드 앱입니다. `android/` 폴더에 있습니다 (Kotlin, 추가 라이브러리 없음).
+
+1. `android/` 폴더에서 APK를 빌드합니다 (`local.properties`에 `sdk.dir=안드로이드 SDK 경로` 필요).
+   ```bash
+   gradlew.bat assembleDebug
+   ```
+   → `android/app/build/outputs/apk/debug/app-debug.apk`
+2. 휴대폰에 APK를 설치하고 **잔디 매니저** 앱을 열어 GitHub 아이디를 확인합니다 (기본 Kangnagi).
+3. **홈 화면에 위젯 추가** 버튼을 누르거나, 홈 화면 빈 곳을 길게 누르고 위젯 → 잔디 매니저를 고릅니다.
+
+- PC 위젯과 같은 GitHub 공개 잔디 페이지를 읽어 토큰이 필요 없습니다.
+- 30분마다(안드로이드가 허용하는 최소 간격)와 자정 직후에 자동으로 갱신됩니다. push 직후에는 위젯의 ⟳ 버튼을 누르세요.
+- 다크/라이트는 휴대폰 설정을 따라가고, 위젯을 누르면 홈페이지가 열립니다.
+
 ## 파일 구성
 
 | 파일 | 설명 |
@@ -74,3 +90,4 @@ python -m http.server 5174
 | `widget/GrassWidget.cs` | 바탕화면 위젯 소스 (C# WinForms) |
 | `widget/build.bat` | 위젯 빌드 스크립트 → `widget/GrassWidget.exe` |
 | `widget/GrassWidget.ico` | 위젯 실행 파일 아이콘 (웹앱 파비콘과 같은 2×2 잔디 로고) |
+| `android/` | 휴대폰 홈 화면 위젯 앱 (Kotlin). `Grass.kt` 잔디 읽기·저장, `GrassWidgetProvider.kt` 위젯, `MainActivity.kt` 앱 화면 |

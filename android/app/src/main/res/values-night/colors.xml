@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 다크 팔레트: 휴대폰이 다크 모드면 자동으로 이 색을 쓴다 -->
+<resources>
+    <color name="bg">#0D1117</color>
+    <color name="line">#30363D</color>
+    <color name="fg">#E6EDF3</color>
+    <color name="muted">#7D8590</color>
+    <color name="ok">#39D353</color>
+    <color name="warn">#F0883E</color>
+    <color name="hover">#21262D</color>
+    <color name="future">#161B22</color>
+    <color name="level0">#21262D</color>
+    <color name="level1">#0E4429</color>
+    <color name="level2">#006D32</color>
+    <color name="level3">#26A641</color>
+    <color name="level4">#39D353</color>
+    <color name="accent">#2EA043</color>
+    <color name="page">#0D1117</color>
+    <color name="card">#161B22</color>
+</resources>

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">잔디 매니저</string>
+    <string name="widget_desc">이번 주 GitHub 잔디, 연속 기록, 오늘 기여 수</string>
+</resources>

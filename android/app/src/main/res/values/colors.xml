@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 라이트 팔레트 (PC 위젯·웹앱과 같은 색) -->
+<resources>
+    <color name="bg">#FFFFFF</color>
+    <color name="line">#D0D7DE</color>
+    <color name="fg">#1F2328</color>
+    <color name="muted">#59636E</color>
+    <color name="ok">#1A7F37</color>
+    <color name="warn">#BC4C00</color>
+    <color name="hover">#EAEEF2</color>
+    <color name="future">#F6F8FA</color>
+    <color name="level0">#EBEDF0</color>
+    <color name="level1">#9BE9A8</color>
+    <color name="level2">#40C463</color>
+    <color name="level3">#30A14E</color>
+    <color name="level4">#216E39</color>
+    <color name="accent">#1F883D</color>
+    <color name="page">#F6F8FA</color>
+    <color name="card">#FFFFFF</color>
+</resources>
