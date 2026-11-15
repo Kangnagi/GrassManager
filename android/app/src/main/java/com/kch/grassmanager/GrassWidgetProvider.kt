@@ -64,10 +64,9 @@ open class GrassWidgetProvider : AppWidgetProvider() {
         }
     }
 
-    /** 위젯 모양: 1×1, 2×1, 2×2, 한 줄(3·4×1), 전체(3·4×2) */
+    /** 위젯 모양: 1×1, 2×2, 한 줄(2·3·4×1), 전체(3·4×2) */
     private enum class Kind(val layout: Int) {
         TINY(R.layout.widget_grass_tiny),
-        WIDE(R.layout.widget_grass_wide),
         SQUARE(R.layout.widget_grass_square),
         ROW(R.layout.widget_grass_small),
         FULL(R.layout.widget_grass),
@@ -138,7 +137,7 @@ open class GrassWidgetProvider : AppWidgetProvider() {
             val twoRows = h >= 150
             return when {
                 w < 130 -> Kind.TINY
-                w < 220 -> if (twoRows) Kind.SQUARE else Kind.WIDE
+                w < 220 -> if (twoRows) Kind.SQUARE else Kind.ROW
                 else -> if (twoRows) Kind.FULL else Kind.ROW
             }
         }
@@ -179,13 +178,13 @@ open class GrassWidgetProvider : AppWidgetProvider() {
             if (kind != Kind.TINY) v.setOnClickPendingIntent(R.id.refresh, refreshIntent(context))
 
             when (kind) {
-                Kind.TINY, Kind.WIDE, Kind.SQUARE -> buildCompact(context, v, kind, data, w, h)
+                Kind.TINY, Kind.SQUARE -> buildCompact(context, v, kind, data, w, h)
                 Kind.ROW, Kind.FULL -> buildWeek(context, v, kind == Kind.ROW, data, w, h)
             }
             return v
         }
 
-        /** 1×1·2×1·2×2: 오늘 칸을 크게 (+ 2×2는 이번 주 작은 7칸) */
+        /** 1×1·2×2: 오늘 칸을 크게 (+ 2×2는 이번 주 작은 7칸) */
         private fun buildCompact(context: Context, v: RemoteViews, kind: Kind, data: Snapshot, w: Float, h: Float) {
             val t = data.todayDay.count
             val streak = if (data.loaded) Grass.streak(data.days, data.today) else 0
@@ -194,7 +193,6 @@ open class GrassWidgetProvider : AppWidgetProvider() {
             var mini = 0f
             val cell = when (kind) {
                 Kind.TINY -> minOf(w - 14, h - 12 - 26)
-                Kind.WIDE -> minOf(h - 22, (w - 22) * 0.36f)
                 else -> {
                     mini = ((w - 20) / 7 * 0.8f).coerceIn(10f, 26f)
                     minOf(h - 22 - 28 - mini - 8, (w - 22) * 0.42f)
@@ -219,7 +217,7 @@ open class GrassWidgetProvider : AppWidgetProvider() {
                 return
             }
 
-            // 2×1·2×2: 상태 글자
+            // 2×2: 상태 글자
             val (status, color) = when {
                 busy.get() -> "새로고침 중…" to R.color.muted
                 !data.loaded -> (data.error ?: "불러오는 중…") to (if (data.error != null) R.color.warn else R.color.muted)
@@ -230,9 +228,8 @@ open class GrassWidgetProvider : AppWidgetProvider() {
             v.setTextViewText(R.id.status, status)
             v.textColor(context, R.id.status, color)
             v.setTextViewText(R.id.streak, if (data.loaded) "연속 ${streak}일" else "")
-            if (kind != Kind.SQUARE) return
 
-            // 2×2: 이번 주 작은 7칸
+            // 이번 주 작은 7칸
             val sunday = data.today.minusDays((data.today.dayOfWeek.value % 7).toLong())
             for (i in 0 until 7) {
                 val d = sunday.plusDays(i.toLong())
@@ -245,7 +242,7 @@ open class GrassWidgetProvider : AppWidgetProvider() {
         }
 
         /**
-         * 3·4칸 너비: 일~토 7칸. 칸은 최대한 크게 — 가로는 7칸이 들어갈 너비, 세로는 제목·상태 줄을 뺀 높이 중 작은 쪽.
+         * 2·3·4칸 너비: 일~토 7칸. 칸은 최대한 크게 — 가로는 7칸이 들어갈 너비, 세로는 제목·상태 줄을 뺀 높이 중 작은 쪽.
          * row=true면 한 줄짜리(오늘 상태가 위 줄), 아니면 전체(상태 줄이 아래 + 이번 주 활동일)
          */
         private fun buildWeek(context: Context, v: RemoteViews, row: Boolean, data: Snapshot, w: Float, h: Float) {
@@ -255,12 +252,19 @@ open class GrassWidgetProvider : AppWidgetProvider() {
 
             v.setTextViewText(R.id.streak, if (data.loaded) "연속 ${Grass.streak(days, today)}일" else "")
 
-            val column = (w - 28) / 7f                          // 좌우 여백 28dp를 뺀 한 칸 자리
-            val byWidth = column - maxOf(4f, column * 0.1f)     // 칸 사이 간격
+            // 2칸 너비(2×1)는 좁으므로 좌우 여백과 칸 사이 간격을 줄이고 글자를 짧게 쓴다
+            val narrow = w < 230
+            if (narrow) {
+                val px = context.resources.displayMetrics.density
+                v.setViewPadding(R.id.widget_root, (8 * px).toInt(), ((if (row) 4 else 10) * px).toInt(),
+                    (6 * px).toInt(), ((if (row) 6 else 12) * px).toInt())
+            }
+            val column = (w - (if (narrow) 18 else 28)) / 7f    // 좌우 여백을 뺀 한 칸 자리
+            val byWidth = column - maxOf(if (narrow) 3f else 4f, column * 0.1f)  // 칸 사이 간격
             val chrome = if (row) 10 + 30 + 24 else 22 + 32 + 24 + 22  // 여백 + 제목 줄 + 요일 글자 (+ 상태 줄)
-            val cell = if (Build.VERSION.SDK_INT >= 31) minOf(byWidth, h - chrome).coerceIn(22f, 64f) else 30f
-            val countSp = (cell * 0.38f).coerceIn(10f, 18f)
-            val daySp = (cell * 0.3f).coerceIn(10f, 13f)
+            val cell = if (Build.VERSION.SDK_INT >= 31) minOf(byWidth, h - chrome).coerceIn(14f, 64f) else 30f
+            val countSp = (cell * 0.38f).coerceIn(9f, 18f)
+            val daySp = (cell * 0.3f).coerceIn(9f, 13f)
 
             var active = 0
             for (i in 0 until 7) {
@@ -282,9 +286,11 @@ open class GrassWidgetProvider : AppWidgetProvider() {
 
             val t = data.todayDay.count
             val (status, color) = when {
-                busy.get() -> "새로고침 중…" to R.color.muted
+                busy.get() -> (if (narrow) "새로고침…" else "새로고침 중…") to R.color.muted
                 !data.loaded -> (data.error ?: "불러오는 중…") to (if (data.error != null) R.color.warn else R.color.muted)
+                narrow && data.error != null -> data.error to R.color.muted
                 data.error != null -> ((if (t > 0) "오늘 ${t}개" else "오늘 아직 없음") + " · " + data.error) to R.color.muted
+                narrow -> (if (t > 0) "오늘 ${t}개" else "아직 없음") to (if (t > 0) R.color.ok else R.color.warn)
                 t > 0 -> "오늘 ${t}개 기여 완료" to R.color.ok
                 else -> "오늘 아직 커밋 없음" to R.color.warn
             }
