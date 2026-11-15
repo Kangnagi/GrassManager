@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 앱 아이콘 앞면: 108dp 캔버스 가운데 안전 영역에 로고(16단위 × 3배 = 48dp) -->
+<!-- 앱 아이콘 앞면: PC 위젯 아이콘(GrassWidget.ico)처럼 배경 없이 2×2 잔디 로고를 크게.
+     108dp 캔버스 중 보이는 영역은 가운데 72dp이므로 로고(16단위 중 1~15)를 약 53dp로(원형 아이콘에서도 모서리가 잘리지 않는 크기) 키워 가운데 둔다 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp" android:height="108dp"
     android:viewportWidth="108" android:viewportHeight="108">
-    <group android:translateX="30" android:translateY="30" android:scaleX="3" android:scaleY="3">
+    <group android:translateX="23.6" android:translateY="23.6" android:scaleX="3.8" android:scaleY="3.8">
         <path android:fillColor="#40C463" android:pathData="M2.5,1h3a1.5,1.5 0,0 1,1.5 1.5v3a1.5,1.5 0,0 1,-1.5 1.5h-3a1.5,1.5 0,0 1,-1.5 -1.5v-3a1.5,1.5 0,0 1,1.5 -1.5z" />
         <path android:fillColor="#216E39" android:pathData="M10.5,1h3a1.5,1.5 0,0 1,1.5 1.5v3a1.5,1.5 0,0 1,-1.5 1.5h-3a1.5,1.5 0,0 1,-1.5 -1.5v-3a1.5,1.5 0,0 1,1.5 -1.5z" />
         <path android:fillColor="#30A14E" android:pathData="M2.5,9h3a1.5,1.5 0,0 1,1.5 1.5v3a1.5,1.5 0,0 1,-1.5 1.5h-3a1.5,1.5 0,0 1,-1.5 -1.5v-3a1.5,1.5 0,0 1,1.5 -1.5z" />

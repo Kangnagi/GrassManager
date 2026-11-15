@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 적응형 아이콘: 흰 배경 + 잔디 로고 -->
+<!-- 적응형 아이콘: 배경은 투명, 앞면은 잔디 로고 (PC 위젯 아이콘과 같은 모양) -->
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
-    <background android:drawable="@android:color/white" />
+    <background android:drawable="@android:color/transparent" />
     <foreground android:drawable="@drawable/ic_launcher_fg" />
     <monochrome android:drawable="@drawable/ic_launcher_fg" />
 </adaptive-icon>

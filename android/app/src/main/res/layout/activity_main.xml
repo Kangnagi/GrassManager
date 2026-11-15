@@ -27,7 +27,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="10dp"
-                android:text="잔디 매니저"
+                android:text="GrassManager"
                 android:textColor="@color/fg"
                 android:textSize="20sp"
                 android:textStyle="bold" />
@@ -182,7 +182,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="10dp"
                 android:lineSpacingExtra="3dp"
-                android:text="• 버튼이 안 되면: 홈 화면 빈 곳을 길게 누르기 → 위젯 → 잔디 매니저\n• 30분마다(그리고 자정에) 자동으로 갱신돼요. push 직후에는 위젯의 ⟳ 버튼을 누르세요.\n• 위젯을 누르면 Grass Manager 홈페이지가 열려요.\n• 다크/라이트는 휴대폰 설정을 따라가요."
+                android:text="• 버튼이 안 되면: 홈 화면 빈 곳을 길게 누르기 → 위젯 → GrassManager\n• 30분마다(그리고 자정에) 자동으로 갱신돼요. push 직후에는 위젯의 ⟳ 버튼을 누르세요.\n• 위젯을 누르면 Grass Manager 홈페이지가 열려요.\n• 다크/라이트는 휴대폰 설정을 따라가요."
                 android:textColor="@color/muted"
                 android:textSize="13sp" />
         </LinearLayout>

@@ -72,8 +72,8 @@ PC 위젯과 같은 모양(이번 주 일~토 잔디, 연속 기록, 오늘 기�
    gradlew.bat assembleDebug
    ```
    → `android/app/build/outputs/apk/debug/app-debug.apk`
-2. 휴대폰에 APK를 설치하고 **잔디 매니저** 앱을 열어 GitHub 아이디를 확인합니다 (기본 Kangnagi).
-3. **홈 화면에 위젯 추가** 버튼을 누르거나, 홈 화면 빈 곳을 길게 누르고 위젯 → 잔디 매니저를 고릅니다.
+2. 휴대폰에 APK를 설치하고 **GrassManager** 앱을 열어 GitHub 아이디를 확인합니다 (기본 Kangnagi).
+3. **홈 화면에 위젯 추가** 버튼을 누르거나, 홈 화면 빈 곳을 길게 누르고 위젯 → GrassManager를 고릅니다.
 
 - PC 위젯과 같은 GitHub 공개 잔디 페이지를 읽어 토큰이 필요 없습니다.
 - 30분마다(안드로이드가 허용하는 최소 간격)와 자정 직후에 자동으로 갱신됩니다. push 직후에는 위젯의 ⟳ 버튼을 누르세요.

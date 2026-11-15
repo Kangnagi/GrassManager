@@ -104,7 +104,7 @@ class MainActivity : Activity() {
         if (manager.isRequestPinAppWidgetSupported) {
             manager.requestPinAppWidget(ComponentName(this, GrassWidgetProvider::class.java), null, null)
         } else {
-            toast("홈 화면 빈 곳을 길게 누르고 위젯 → 잔디 매니저를 골라 주세요")
+            toast("홈 화면 빈 곳을 길게 누르고 위젯 → GrassManager를 골라 주세요")
         }
     }
 
