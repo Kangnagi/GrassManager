@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 3×1 위젯. 길게 눌러 1×1 ~ 4×2로 크기를 바꿀 수 있고, 크기에 맞는 모양으로 바뀐다. 자동 갱신 30분 -->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="180dp"
+    android:minHeight="40dp"
+    android:minResizeWidth="40dp"
+    android:minResizeHeight="40dp"
+    android:maxResizeWidth="420dp"
+    android:maxResizeHeight="260dp"
+    android:targetCellWidth="3"
+    android:targetCellHeight="1"
+    android:resizeMode="horizontal|vertical"
+    android:updatePeriodMillis="1800000"
+    android:initialLayout="@layout/widget_grass_small"
+    android:previewLayout="@layout/widget_grass_small"
+    android:description="@string/widget_desc_3x1"
+    android:widgetCategory="home_screen" />

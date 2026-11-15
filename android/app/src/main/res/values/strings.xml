@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">GrassManager</string>
-    <string name="widget_desc">이번 주 GitHub 잔디, 연속 기록, 오늘 기여 수 (4×2)</string>
-    <string name="widget_small_desc">이번 주 GitHub 잔디 한 줄 (4×1)</string>
+    <string name="widget_desc_1x1">오늘 기여 수와 연속 기록 (1×1)</string>
+    <string name="widget_desc_2x1">오늘 기여 수·상태·연속 기록 (2×1)</string>
+    <string name="widget_desc_2x2">오늘 칸과 이번 주 작은 7칸 (2×2)</string>
+    <string name="widget_desc_3x1">이번 주 잔디 한 줄 (3×1)</string>
+    <string name="widget_desc_3x2">이번 주 잔디·연속 기록·오늘 상태 (3×2)</string>
+    <string name="widget_desc_4x1">이번 주 잔디 한 줄 (4×1)</string>
+    <string name="widget_desc_4x2">이번 주 잔디·연속 기록·오늘 상태 (4×2)</string>
 </resources>

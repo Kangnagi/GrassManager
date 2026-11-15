@@ -19,29 +19,95 @@
             </intent-filter>
         </activity>
 
-        <!-- 4×2 위젯 -->
+        <!-- 1×1 위젯 -->
         <receiver
-            android:name=".GrassWidgetProvider"
+            android:name=".GrassWidget1x1Provider"
             android:exported="false"
-            android:label="@string/app_name">
+            android:label="GrassManager 1×1">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>
             <meta-data
                 android:name="android.appwidget.provider"
-                android:resource="@xml/grass_widget_info" />
+                android:resource="@xml/grass_widget_1x1_info" />
         </receiver>
+
+        <!-- 2×1 위젯 -->
+        <receiver
+            android:name=".GrassWidget2x1Provider"
+            android:exported="false"
+            android:label="GrassManager 2×1">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/grass_widget_2x1_info" />
+        </receiver>
+
+        <!-- 2×2 위젯 -->
+        <receiver
+            android:name=".GrassWidget2x2Provider"
+            android:exported="false"
+            android:label="GrassManager 2×2">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/grass_widget_2x2_info" />
+        </receiver>
+
+        <!-- 3×1 위젯 -->
+        <receiver
+            android:name=".GrassWidget3x1Provider"
+            android:exported="false"
+            android:label="GrassManager 3×1">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/grass_widget_3x1_info" />
+        </receiver>
+
+        <!-- 3×2 위젯 -->
+        <receiver
+            android:name=".GrassWidget3x2Provider"
+            android:exported="false"
+            android:label="GrassManager 3×2">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/grass_widget_3x2_info" />
+        </receiver>
+
         <!-- 4×1 위젯 -->
         <receiver
             android:name=".GrassWidgetSmallProvider"
             android:exported="false"
-            android:label="GrassManager 한 줄">
+            android:label="GrassManager 4×1">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/grass_widget_small_info" />
+        </receiver>
+
+        <!-- 4×2 위젯 -->
+        <receiver
+            android:name=".GrassWidgetProvider"
+            android:exported="false"
+            android:label="GrassManager 4×2">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/grass_widget_info" />
         </receiver>
     </application>
 </manifest>
