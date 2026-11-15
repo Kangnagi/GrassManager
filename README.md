@@ -78,6 +78,7 @@ PC 위젯과 같은 모양(이번 주 일~토 잔디, 연속 기록, 오늘 기�
 - PC 위젯과 같은 GitHub 공개 잔디 페이지를 읽어 토큰이 필요 없습니다.
 - 30분마다(안드로이드가 허용하는 최소 간격)와 자정 직후에 자동으로 갱신됩니다. push 직후에는 위젯의 ⟳ 버튼을 누르세요.
 - 다크/라이트는 휴대폰 설정을 따라가고, 위젯을 누르면 홈페이지가 열립니다.
+- 위젯은 **4×2**(제목·7칸·상태 줄)와 **4×1**(한 줄: 오늘 상태·연속 기록 + 7칸) 두 가지입니다. 위젯 크기를 바꾸면 잔디 칸도 그 크기에 맞게 커지거나 작아집니다 (안드로이드 12 이상).
 
 ## 파일 구성
 
@@ -90,4 +91,4 @@ PC 위젯과 같은 모양(이번 주 일~토 잔디, 연속 기록, 오늘 기�
 | `widget/GrassWidget.cs` | 바탕화면 위젯 소스 (C# WinForms) |
 | `widget/build.bat` | 위젯 빌드 스크립트 → `widget/GrassWidget.exe` |
 | `widget/GrassWidget.ico` | 위젯 실행 파일 아이콘 (웹앱 파비콘과 같은 2×2 잔디 로고) |
-| `android/` | 휴대폰 홈 화면 위젯 앱 (Kotlin). `Grass.kt` 잔디 읽기·저장, `GrassWidgetProvider.kt` 위젯, `MainActivity.kt` 앱 화면 |
+| `android/` | 휴대폰 홈 화면 위젯 앱 (Kotlin). `Grass.kt` 잔디 읽기·저장, `GrassWidgetProvider.kt` 4×2·4×1 위젯, `MainActivity.kt` 앱 화면 |

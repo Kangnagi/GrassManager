@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 홈 화면 위젯: 제목 줄(로고·연속 기록·새로고침) / 일~토 7칸 / 상태 줄. PC 위젯과 같은 배치 -->
+<!-- 4×2 위젯: 제목 줄(로고·연속 기록·새로고침) / 일~토 7칸 / 상태 줄. PC 위젯과 같은 배치 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/widget_root"
     android:layout_width="match_parent"
@@ -18,11 +18,13 @@
         android:orientation="horizontal">
 
         <ImageView
-            android:layout_width="14dp"
-            android:layout_height="14dp"
+            android:id="@+id/logo"
+            android:layout_width="15dp"
+            android:layout_height="15dp"
             android:src="@drawable/logo" />
 
         <TextView
+            android:id="@+id/title"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginStart="7dp"
@@ -30,7 +32,7 @@
             android:maxLines="1"
             android:text="이번 주 잔디"
             android:textColor="@color/fg"
-            android:textSize="14sp"
+            android:textSize="15sp"
             android:textStyle="bold" />
 
         <TextView
@@ -39,7 +41,7 @@
             android:layout_height="wrap_content"
             android:maxLines="1"
             android:textColor="@color/ok"
-            android:textSize="12sp"
+            android:textSize="13sp"
             android:textStyle="bold" />
 
         <ImageView
@@ -69,6 +71,7 @@
             android:orientation="vertical">
 
             <FrameLayout
+                android:id="@+id/frame0"
                 android:layout_width="30dp"
                 android:layout_height="30dp">
 
@@ -114,6 +117,7 @@
             android:orientation="vertical">
 
             <FrameLayout
+                android:id="@+id/frame1"
                 android:layout_width="30dp"
                 android:layout_height="30dp">
 
@@ -159,6 +163,7 @@
             android:orientation="vertical">
 
             <FrameLayout
+                android:id="@+id/frame2"
                 android:layout_width="30dp"
                 android:layout_height="30dp">
 
@@ -204,6 +209,7 @@
             android:orientation="vertical">
 
             <FrameLayout
+                android:id="@+id/frame3"
                 android:layout_width="30dp"
                 android:layout_height="30dp">
 
@@ -249,6 +255,7 @@
             android:orientation="vertical">
 
             <FrameLayout
+                android:id="@+id/frame4"
                 android:layout_width="30dp"
                 android:layout_height="30dp">
 
@@ -294,6 +301,7 @@
             android:orientation="vertical">
 
             <FrameLayout
+                android:id="@+id/frame5"
                 android:layout_width="30dp"
                 android:layout_height="30dp">
 
@@ -339,6 +347,7 @@
             android:orientation="vertical">
 
             <FrameLayout
+                android:id="@+id/frame6"
                 android:layout_width="30dp"
                 android:layout_height="30dp">
 
@@ -393,7 +402,7 @@
             android:maxLines="1"
             android:text="불러오는 중…"
             android:textColor="@color/muted"
-            android:textSize="12sp"
+            android:textSize="13sp"
             android:textStyle="bold" />
 
         <TextView
@@ -403,6 +412,6 @@
             android:layout_marginStart="6dp"
             android:maxLines="1"
             android:textColor="@color/muted"
-            android:textSize="12sp" />
+            android:textSize="13sp" />
     </LinearLayout>
 </LinearLayout>

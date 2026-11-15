@@ -19,7 +19,7 @@
             </intent-filter>
         </activity>
 
-        <!-- 홈 화면 위젯 -->
+        <!-- 4×2 위젯 -->
         <receiver
             android:name=".GrassWidgetProvider"
             android:exported="false"
@@ -30,6 +30,18 @@
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/grass_widget_info" />
+        </receiver>
+        <!-- 4×1 위젯 -->
+        <receiver
+            android:name=".GrassWidgetSmallProvider"
+            android:exported="false"
+            android:label="GrassManager 한 줄">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/grass_widget_small_info" />
         </receiver>
     </application>
 </manifest>
